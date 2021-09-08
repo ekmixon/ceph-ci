@@ -116,11 +116,7 @@ void PrepareRemoteImageRequest<I>::handle_get_mirror_info(int r) {
     dout(5) << "remote image mirroring is being disabled" << dendl;
     finish(-ENOENT);
     return;
-  } else if (m_promotion_state != librbd::mirror::PROMOTION_STATE_PRIMARY &&
-             (state_builder == nullptr ||
-              state_builder->local_image_id.empty() ||
-              state_builder->local_promotion_state ==
-                librbd::mirror::PROMOTION_STATE_UNKNOWN)) {
+  } else if (m_promotion_state != librbd::mirror::PROMOTION_STATE_PRIMARY) {
     // no local image and remote isn't primary -- don't sync it
     dout(5) << "remote image is not primary -- not syncing" << dendl;
     finish(-EREMOTEIO);
@@ -244,6 +240,12 @@ void PrepareRemoteImageRequest<I>::finalize_journal_state_builder(
     state_builder = journal::StateBuilder<I>::create(m_global_image_id);
     *m_state_builder = state_builder;
   }
+
+  dout(10) << "remote_mirror_uuid=" << m_remote_pool_meta.mirror_uuid << ", "
+           << "remote_mirror_peer_uuid="
+           << m_remote_pool_meta.mirror_peer_uuid << ", "
+           << "remote_image_id=" << m_remote_image_id << ", "
+           << "remote_promotion_state=" << m_promotion_state << dendl;
 
   state_builder->remote_mirror_uuid = m_remote_pool_meta.mirror_uuid;
   state_builder->remote_image_id = m_remote_image_id;
