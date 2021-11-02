@@ -222,9 +222,9 @@ void BootstrapRequest<I>::handle_prepare_remote_image(int r) {
 
     ++m_it_peer;
     if (state_builder != nullptr && state_builder->is_linked()) {
-        // If the image is linked we should stop the processing
-        m_it_peer = m_peers.end();
-      }
+      // If the image is linked we should stop the processing
+      m_it_peer = m_peers.end();
+    }
 
     prepare_remote_image();
     return;
