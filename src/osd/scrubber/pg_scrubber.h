@@ -941,7 +941,10 @@ class PgScrubber : public ScrubPgIF,
 
     [[nodiscard]] bool was_preempted() const { return m_preempted; }
 
-    [[nodiscard]] size_t chunk_divisor() const { return m_size_divisor; }
+    [[nodiscard]] int chunk_divisor() const
+    {
+      return static_cast<int>(m_size_divisor);
+    }
 
     void reset();
 
