@@ -524,7 +524,7 @@ int radosgw_Main(int argc, const char **argv)
     olog->add_sink(ops_log_file);
   }
   register_async_signal_handler(SIGHUP, rgw_sighup_handler);
-  olog->add_sink(new OpsLogRados(store->getRados()));
+  olog->add_sink(new OpsLogRados(store));
 
   r = signal_fd_init();
   if (r < 0) {
