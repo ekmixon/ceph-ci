@@ -119,11 +119,13 @@ void PrepareRemoteImageRequest<I>::handle_get_mirror_info(int r) {
   } else if (m_promotion_state != librbd::mirror::PROMOTION_STATE_PRIMARY) {
     // no local image and remote isn't primary -- don't sync it
     dout(5) << "remote image is not primary -- not syncing" << dendl;
-    m_r = -EREMOTEIO;
-    if (m_mirror_image.mode != cls::rbd::MIRROR_IMAGE_MODE_JOURNAL) {
+    if (state_builder == nullptr ||
+        state_builder->local_image_id.empty() ||
+        state_builder->local_promotion_state == librbd::mirror::PROMOTION_STATE_UNKNOWN) {
       finish(-EREMOTEIO);
       return;
     }
+    m_r = -ENOENT;
   }
 
   switch (m_mirror_image.mode) {
@@ -132,7 +134,7 @@ void PrepareRemoteImageRequest<I>::handle_get_mirror_info(int r) {
     break;
   case cls::rbd::MIRROR_IMAGE_MODE_SNAPSHOT:
     finalize_snapshot_state_builder();
-    finish(0);
+    finish(m_r);
     break;
   default:
     derr << "unsupported mirror image mode " << m_mirror_image.mode << " "
@@ -233,9 +235,6 @@ template <typename I>
 void PrepareRemoteImageRequest<I>::finalize_journal_state_builder(
     cls::journal::ClientState client_state,
     const MirrorPeerClientMeta& client_meta) {
-  if (m_r != 0) {
-    return;
-  }
   journal::StateBuilder<I>* state_builder = nullptr;
   if (*m_state_builder != nullptr) {
     // already verified that it's a matching builder in
@@ -256,9 +255,12 @@ void PrepareRemoteImageRequest<I>::finalize_journal_state_builder(
   state_builder->remote_mirror_uuid = m_remote_pool_meta.mirror_uuid;
   state_builder->remote_image_id = m_remote_image_id;
   state_builder->remote_promotion_state = m_promotion_state;
-  state_builder->remote_journaler = m_remote_journaler;
   state_builder->remote_client_state = client_state;
   state_builder->remote_client_meta = client_meta;
+
+  if (m_r == 0) {
+    state_builder->remote_journaler = m_remote_journaler;
+  }
 }
 
 template <typename I>
