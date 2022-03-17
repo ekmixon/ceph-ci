@@ -189,9 +189,9 @@ bool ConfigMonitor::preprocess_command(MonOpRequestRef op)
   bufferlist odata;
   if (prefix == "config help") {
     stringstream ss;
-    string name;
-    cmd_getval(cmdmap, "key", name);
-    name = ConfFile::normalize_key_name(name);
+    string name, name_before_normilize;
+    cmd_getval(cmdmap, "key", name_before_normilize);
+    name = ConfFile::normalize_key_name(name_before_normilize);
     const Option *opt = g_conf().find_option(name);
     if (!opt) {
       opt = mon.mgrmon()->find_module_option(name);
@@ -289,7 +289,7 @@ bool ConfigMonitor::preprocess_command(MonOpRequestRef op)
       f->flush(odata);
     }
   } else if (prefix == "config get") {
-    string who, name;
+    string who, name, name_before_normilize;
     cmd_getval(cmdmap, "who", who);
 
     EntityName entity;
@@ -321,8 +321,9 @@ bool ConfigMonitor::preprocess_command(MonOpRequestRef op)
       device_class,
       &src);
 
-    if (cmd_getval(cmdmap, "key", name)) {
-      name = ConfFile::normalize_key_name(name);
+    if (cmd_getval(cmdmap, "key", name_before_normilize)) {
+      
+      name = ConfFile::normalize_key_name(name_before_normilize);
       const Option *opt = g_conf().find_option(name);
       if (!opt) {
 	opt = mon.mgrmon()->find_module_option(name);
@@ -532,14 +533,15 @@ bool ConfigMonitor::prepare_command(MonOpRequestRef op)
   if (prefix == "config set" ||
       prefix == "config rm") {
     string who;
-    string name, value;
+    string name, name_before_normilize, value;
     bool force = false;
     cmd_getval(cmdmap, "who", who);
-    cmd_getval(cmdmap, "name", name);
+    cmd_getval(cmdmap, "name", name_before_normilize);
     cmd_getval(cmdmap, "value", value);
     cmd_getval(cmdmap, "force", force);
-    name = ConfFile::normalize_key_name(name);
     
+    name = ConfFile::normalize_key_name(name_before_normilize);
+    err = 0;
     if (prefix == "config set" && !force) {
       const Option *opt = g_conf().find_option(name);
       if (!opt) {

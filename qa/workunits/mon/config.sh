@@ -64,6 +64,7 @@ ceph config rm global debug_asok
 
 # whitespace keys
 ceph config set client.foo 'debug asok' 44
+ceph config get client.foo 'debug asok'
 ceph config get client.foo 'debug asok' | grep 44
 ceph config set client.foo debug_asok 55
 ceph config get client.foo 'debug asok' | grep 55
