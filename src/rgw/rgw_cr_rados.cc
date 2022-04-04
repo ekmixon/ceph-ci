@@ -714,7 +714,7 @@ int RGWAsyncFetchRemoteObj::_send_request(const DoutPrefixProvider *dpp)
         std::string tenant(dest_bucket.get_tenant());
 
         std::unique_ptr<rgw::sal::Notification> notify 
-                 = store->get_notification(dpp, &dest_obj, nullptr, &obj_ctx, rgw::notify::ObjectSyncedCreate,
+                 = store->get_notification(dpp, &dest_obj, nullptr, rgw::notify::ObjectSyncedCreate,
                   &dest_bucket, user_id,
                   tenant,
                   req_id, null_yield);
