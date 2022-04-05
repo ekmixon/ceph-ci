@@ -1793,3 +1793,4 @@ if [ -f "$STRAY_CONF_PATH" -a -n "$conf_fn" -a ! "$conf_fn" -ef "$STRAY_CONF_PAT
 fi
 
 init_logrotate
+
