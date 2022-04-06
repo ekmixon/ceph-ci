@@ -16,13 +16,13 @@ RefCountedObject::~RefCountedObject()
 
 void RefCountedObject::put() const {
   CephContext *local_cct = cct;
-  auto v = --nref;
-  if (local_cct) {
+  if (local_cct) { 
+    const auto v = nref.load(std::memory_order_acquire);
     lsubdout(local_cct, refs, 1) << "RefCountedObject::put " << this << " "
-		   << (v + 1) << " -> " << v
+		   << v << " -> " << (v - 1)
 		   << dendl;
   }
-  if (v == 0) {
+  if (--nref == 0) {
     ANNOTATE_HAPPENS_AFTER(&nref);
     ANNOTATE_HAPPENS_BEFORE_FORGET_ALL(&nref);
     delete this;
