@@ -340,6 +340,12 @@ A clone can be in one of the following states:
 #. `in-progress` : Clone operation is in progress
 #. `complete`    : Clone operation has successfully finished
 #. `failed`      : Clone operation has failed
+#. `canceled`    : Clone operation is cancelled by user
+
+The failure reason of the failed clone is shown as below:
+
+#. `errno`  : error number
+#. `errstr` : failure error string
 
 Sample output from an `in-progress` clone operation::
 
@@ -352,6 +358,28 @@ Sample output from an `in-progress` clone operation::
         "volume": "cephfs",
         "subvolume": "subvol1",
         "snapshot": "snap1"
+      }
+    }
+  }
+
+.. note:: The `failure` section is shown only when clone is in `failed/canceled` state)
+
+Sample output from a `failed` clone operation::
+
+  $ ceph fs subvolume snapshot clone cephfs subvol1 snap1 clone1
+  $ ceph fs clone status cephfs clone1
+  {
+    "status": {
+      "state": "failed",
+      "source": {
+        "volume": "cephfs",
+        "subvolume": "subvol1",
+        "snapshot": "snap1"
+        "size": "104857600"
+      },
+      "failure": {
+        "errno": "122",
+        "errstr": "Disk quota exceeded"
       }
     }
   }
