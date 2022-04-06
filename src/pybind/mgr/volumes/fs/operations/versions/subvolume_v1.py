@@ -139,6 +139,12 @@ class SubvolumeV1(SubvolumeBase, SubvolumeTemplate):
         if flush:
             self.metadata_mgr.flush()
 
+    def add_clone_failure(self, errno, error_msg):
+        self.metadata_mgr.add_section("failure")
+        self.metadata_mgr.update_section("failure", "errno", errno)
+        self.metadata_mgr.update_section("failure", "error_msg", error_msg)
+        self.metadata_mgr.flush()
+
     def create_clone(self, pool, source_volname, source_subvolume, snapname):
         subvolume_type = SubvolumeTypes.TYPE_CLONE
         try:
@@ -660,6 +666,13 @@ class SubvolumeV1(SubvolumeBase, SubvolumeTemplate):
             raise VolumeException(-errno.EINVAL, "error fetching subvolume metadata")
         return clone_source
 
+    def _get_clone_failure(self):
+        clone_failure = {
+            'errno'     : self.metadata_mgr.get_option("failure", "errno"),
+            'error_msg' : self.metadata_mgr.get_option("failure", "error_msg"),
+        }
+        return clone_failure
+
     @property
     def status(self):
         state = SubvolumeStates.from_value(self.metadata_mgr.get_global_option(MetadataManager.GLOBAL_META_KEY_STATE))
@@ -669,6 +682,12 @@ class SubvolumeV1(SubvolumeBase, SubvolumeTemplate):
         }
         if not SubvolumeOpSm.is_complete_state(state) and subvolume_type == SubvolumeTypes.TYPE_CLONE:
             subvolume_status["source"] = self._get_clone_source()
+        if SubvolumeOpSm.is_failed_state(state) and subvolume_type == SubvolumeTypes.TYPE_CLONE:
+            try:
+                subvolume_status["failure"] = self._get_clone_failure()
+            except MetadataMgrException:
+                pass
+
         return subvolume_status
 
     @property
