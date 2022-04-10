@@ -333,8 +333,9 @@ void PGLog::rewind_divergent_log(eversion_t newhead,
   dout(20) << __func__ << " original_crt = " << original_crt << dendl;
   if (info.last_complete > newhead)
     info.last_complete = newhead;
-
+  
   auto divergent = log.rewind_from_head(newhead);
+  dout(20) << "rewind_from_head returned " << divergent << "rollback_info_trimmed_to:"<< log.get_rollback_info_trimmed_to() << "newhead:" << newhead << dendl;
   if (!divergent.empty()) {
     mark_dirty_from(divergent.front().version);
   }
