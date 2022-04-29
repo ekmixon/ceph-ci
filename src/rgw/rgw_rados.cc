@@ -775,7 +775,7 @@ struct complete_op_data {
 
 class RGWIndexCompletionManager {
   RGWRados* const store;
-  const int num_shards;
+  const uint32_t num_shards;
   ceph::containers::tiny_vector<ceph::mutex> locks;
   std::vector<set<complete_op_data*>> completions;
   std::vector<complete_op_data*> retry_completions;
@@ -785,7 +785,10 @@ class RGWIndexCompletionManager {
   bool _stop{false};
   std::thread retry_thread;
 
-  std::atomic<int> cur_shard {0};
+  // used to distribute the completions and the locks they use across
+  // their respective vectors; it will get incremented and can wrap
+  // around back to 0 without issue
+  std::atomic<uint32_t> cur_shard {0};
 
   void process();
   
@@ -798,7 +801,7 @@ class RGWIndexCompletionManager {
       retry_thread.join();
     }
 
-    for (int i = 0; i < num_shards; ++i) {
+    for (uint32_t i = 0; i < num_shards; ++i) {
       std::lock_guard l{locks[i]};
       for (auto c : completions[i]) {
         c->stop();
@@ -807,10 +810,8 @@ class RGWIndexCompletionManager {
     completions.clear();
   }
   
-  int next_shard() {
-    int result = cur_shard % num_shards;
-    cur_shard++;
-    return result;
+  uint32_t next_shard() {
+    return cur_shard++ % num_shards;
   }
 
 public:
