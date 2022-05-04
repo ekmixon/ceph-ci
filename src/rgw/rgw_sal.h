@@ -691,11 +691,6 @@ class Bucket {
     /** Set the ACL for this bucket */
     virtual int set_acl(const DoutPrefixProvider* dpp, RGWAccessControlPolicy& acl, optional_yield y) = 0;
 
-    // XXXX hack
-    void set_owner(rgw::sal::User* _owner) {
-      owner = _owner;
-    }
-
     /** Load this bucket from the backing store.  Requires the key to be set, fills other fields.
      * If @a get_stats is true, then statistics on the bucket are also looked up. */
     virtual int load_bucket(const DoutPrefixProvider* dpp, optional_yield y, bool get_stats = false) = 0;

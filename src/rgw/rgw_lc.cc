@@ -530,23 +530,14 @@ static int remove_expired_obj(
     obj_key.instance = "null";
   }
 
+  std::unique_ptr<rgw::sal::User> user;
   std::unique_ptr<rgw::sal::Bucket> bucket;
   std::unique_ptr<rgw::sal::Object> obj;
 
-  ret = store->get_bucket(nullptr, bucket_info, &bucket);
+  user = store->get_user(bucket_info.owner);
+  ret = store->get_bucket(user.get(), bucket_info, &bucket);
   if (ret < 0) {
     return ret;
-  }
-
-  // XXXX currently, rgw::sal::Bucket.owner is always null here
-  std::unique_ptr<rgw::sal::User> user;
-  if (! bucket->get_owner()) {
-    auto& bucket_info = bucket->get_info();
-    user = store->get_user(bucket_info.owner);
-    // forgive me, lord
-    if (user) {
-      bucket->set_owner(user.get());
-    }
   }
 
   obj = bucket->get_object(obj_key);
