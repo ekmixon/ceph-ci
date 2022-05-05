@@ -430,6 +430,7 @@ void ProtocolV2::send_message(Message *m) {
 
   // TODO: Currently not all messages supports reencode like MOSDMap, so here
   // only let fast dispatch support messages prepare message
+  ldout(cct, 10) << __func__ << " features: " << connection->get_features() << dendl;
   const bool can_fast_prepare = messenger->ms_can_fast_dispatch(m);
   if (can_fast_prepare) {
     prepare_send_message(f, m);

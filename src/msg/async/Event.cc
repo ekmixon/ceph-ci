@@ -341,6 +341,7 @@ void EventCenter::wakeup()
   int n = send(notify_send_fd, &buf, sizeof(buf), 0);
   #else
   int n = write(notify_send_fd, &buf, sizeof(buf));
+  ldout(cct, 20) << __func__ << n << dendl;
   #endif
   if (n < 0) {
     if (ceph_sock_errno() != EAGAIN) {
@@ -472,8 +473,10 @@ void EventCenter::dispatch_event_external(EventCallbackRef e)
     external_events.push_back(e);
     num = ++external_num_events;
   }
-  if (num == 1 && !in_thread())
+  if (num == 1 && !in_thread()) {
+    ldout(cct, 30) << __func__ << " Before wakeup ..." << dendl;
     wakeup();
+  }
 
   ldout(cct, 30) << __func__ << " " << e << " pending " << num << dendl;
 }

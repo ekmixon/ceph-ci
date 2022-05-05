@@ -10,6 +10,8 @@ overrides:
         mon osdmap full prune txsize: 2
       osd:
         debug monc: 20
+        debug ms: 30
+        debug osd: 25
 tasks:
 - install:
 - ceph:
