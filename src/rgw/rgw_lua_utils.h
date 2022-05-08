@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 #include <ctime>
+#include <map>
+#include <string.h>
 #include <lua.hpp>
 
 #include "include/common_fwd.h"
