@@ -4,6 +4,11 @@
 #include <string>
 #include "rgw_lua_utils.h"
 
+namespace rgw::sal {
+  class LuaScriptManager;
+  class Store;
+}
+
 namespace rgw::lua {
 
 //Interval between each execution of the script is set to 5 seconds
@@ -40,7 +45,7 @@ private:
   bool started = false;
   int execute_interval = INIT_EXECUTE_INTERVAL;
   const DoutPrefixProvider* const dpp;
-  rgw::sal::Store* const store;
+  std::unique_ptr<rgw::sal::LuaScriptManager> manager;
   CephContext* const cct;
   const std::string luarocks_path;
   std::thread runner;
@@ -56,11 +61,7 @@ public:
   Background(const DoutPrefixProvider* dpp,
       rgw::sal::Store* store,
       CephContext* cct,
-      const std::string& luarocks_path) :
-    dpp(dpp),
-    store(store),
-    cct(cct),
-    luarocks_path(luarocks_path) {}
+      const std::string& luarocks_path);
 
     virtual ~Background() = default;
     void start();

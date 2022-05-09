@@ -1,3 +1,4 @@
+#include "rgw_sal.h"
 #include "rgw_lua_background.h"
 #include "rgw_lua.h"
 #include "rgw_lua_utils.h"
@@ -31,8 +32,17 @@ void Background::start() {
 
 int Background::read_script() {
   std::string tenant;
-  return rgw::lua::read_script(dpp, store, tenant, null_yield, rgw::lua::context::background, rgw_script);
+  return rgw::lua::read_script(dpp, manager.get(), tenant, null_yield, rgw::lua::context::background, rgw_script);
 }
+
+Background::Background(const DoutPrefixProvider* dpp,
+      rgw::sal::Store* store,
+      CephContext* cct,
+      const std::string& luarocks_path) :
+    dpp(dpp),
+    manager(store->get_lua_script_manager()),
+    cct(cct),
+    luarocks_path(luarocks_path) {}
 
 //(1) Loads the script from the object
 //(2) Executes the script

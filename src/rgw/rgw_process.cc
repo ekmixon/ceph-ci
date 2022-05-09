@@ -303,6 +303,8 @@ int process_request(rgw::sal::Store* const store,
 
   ldpp_dout(s, 2) << "initializing for trans_id = " << s->trans_id << dendl;
 
+  // lua manager has to be initialized before possible "goto done" call
+  auto lua_manager = store->get_lua_script_manager();
   RGWOp* op = nullptr;
   int init_error = 0;
   bool should_log = false;
@@ -329,7 +331,7 @@ int process_request(rgw::sal::Store* const store,
   }
   {
     std::string script;
-    auto rc = rgw::lua::read_script(s, store, s->bucket_tenant, s->yield, rgw::lua::context::preRequest, script);
+    auto rc = rgw::lua::read_script(s, lua_manager.get(), s->bucket_tenant, s->yield, rgw::lua::context::preRequest, script);
     if (rc == -ENOENT) {
       // no script, nothing to do
     } else if (rc < 0) {
@@ -410,16 +412,18 @@ done:
     if (s->object) {
       s->trace->SetAttribute(tracing::rgw::OBJECT_NAME, s->object->get_name());
     }
-    std::string script;
-    auto rc = rgw::lua::read_script(s, store, s->bucket_tenant, s->yield, rgw::lua::context::postRequest, script);
-    if (rc == -ENOENT) {
-      // no script, nothing to do
-    } else if (rc < 0) {
-      ldpp_dout(op, 5) << "WARNING: failed to read post request script. error: " << rc << dendl;
-    } else {
-      rc = rgw::lua::request::execute(store, rest, olog, s, op->name(), script, lua_background);
-      if (rc < 0) {
-        ldpp_dout(op, 5) << "WARNING: failed to execute post request script. error: " << rc << dendl;
+    {
+      std::string script;
+      auto rc = rgw::lua::read_script(s, lua_manager.get(), s->bucket_tenant, s->yield, rgw::lua::context::postRequest, script);
+      if (rc == -ENOENT) {
+        // no script, nothing to do
+      } else if (rc < 0) {
+        ldpp_dout(op, 5) << "WARNING: failed to read post request script. error: " << rc << dendl;
+      } else {
+        rc = rgw::lua::request::execute(store, rest, olog, s, op->name(), script, lua_background);
+        if (rc < 0) {
+          ldpp_dout(op, 5) << "WARNING: failed to execute post request script. error: " << rc << dendl;
+        }
       }
     }
   }

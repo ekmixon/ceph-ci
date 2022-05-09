@@ -595,6 +595,22 @@ TEST(TestRGWLua, NotAllowedInLib)
   ASSERT_NE(rc, 0);
 }
 
+// derived rados store class used to override get_lua_script_manager()
+class TestRadosStore : public sal::RadosStore {
+public:
+  TestRadosStore() = default;
+  ~TestRadosStore() override = default;
+  std::unique_ptr<rgw::sal::LuaScriptManager> get_lua_script_manager() override {
+    return std::unique_ptr<rgw::sal::LuaScriptManager>();
+ }
+};
+
+auto make_store() {
+  auto store = new TestRadosStore;
+  store->setRados(new RGWRados);
+  return std::unique_ptr<sal::RadosStore>(store);
+}
+
 TEST(TestRGWLua, OpsLog)
 {
   const std::string script = R"(
@@ -606,8 +622,6 @@ TEST(TestRGWLua, OpsLog)
 		end
   )";
 
-  auto store = std::unique_ptr<sal::RadosStore>(new sal::RadosStore);
-  store->setRados(new RGWRados);
 
   struct MockOpsLogSink : OpsLogSink {
     bool logged = false;
@@ -637,6 +651,8 @@ TEST(TestRGWLua, OpsLog)
   s.auth.identity = std::unique_ptr<rgw::auth::Identity>(
                         new FakeIdentity());
 
+  auto store = make_store();
+
   auto rc = lua::request::execute(store.get(), nullptr, &olog, &s, "put_obj", script);
   EXPECT_EQ(rc, 0);
   EXPECT_FALSE(olog.logged); // don't log http_ret=200
@@ -655,8 +671,8 @@ protected:
   }
 
 public:
-  TestBackground(const std::string& script) : 
-    rgw::lua::Background(nullptr, nullptr, nullptr, "") {
+  TestBackground(sal::RadosStore* store, const std::string& script) :
+    rgw::lua::Background(nullptr, store, nullptr, "") {
       // the script is passed in the constructor
       rgw_script = script;
     }
@@ -668,13 +684,14 @@ public:
 
 TEST(TestRGWLua, Background)
 {
+  auto store = make_store();
   {
     // ctr and dtor without running
-    TestBackground lua_background("");
+    TestBackground lua_background(store.get(), "");
   }
   {
     // ctr and dtor with running
-    TestBackground lua_background("");
+    TestBackground lua_background(store.get(), "");
     lua_background.start();
     // let the background context run for 5 seconds
     std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -690,7 +707,8 @@ TEST(TestRGWLua, BackgroundScript)
     print(RGW[key] == value)
   )";
 
-  TestBackground lua_background(script);
+  auto store = make_store();
+  TestBackground lua_background(store.get(), script);
   lua_background.start();
   // let the background context run for 5 seconds
   std::this_thread::sleep_for(std::chrono::seconds(5));
@@ -708,7 +726,8 @@ TEST(TestRGWLua, BackgroundRequestScript)
     print("from background:", RGW[key])
   )";
 
-  TestBackground lua_background(background_script);
+  auto store = make_store();
+  TestBackground lua_background(store.get(), background_script);
   lua_background.start();
   // let the background context run for 5 seconds
   std::this_thread::sleep_for(std::chrono::seconds(5));

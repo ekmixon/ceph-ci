@@ -2942,10 +2942,10 @@ const std::string& RadosZone::get_realm_id()
   return store->svc()->zone->get_realm().get_id();
 }
 
-RadosLuaScriptManager::RadosLuaScriptManager(RadosStore* _s) : store(_s)
-{
-  pool = store->svc()->zone->get_zone_params().log_pool;
-}
+RadosLuaScriptManager::RadosLuaScriptManager(RadosStore* _s) : 
+  store(_s), 
+  pool(store->svc()->zone->get_zone_params().log_pool)
+{}
 
 int RadosLuaScriptManager::get(const DoutPrefixProvider* dpp, optional_yield y, const std::string& key, std::string& script)
 {
