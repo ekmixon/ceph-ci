@@ -25,11 +25,7 @@ function(build_pmem)
   ExternalProject_Add(pmdk_ext
       ${source_dir_args}
       CONFIGURE_COMMAND ""
-      # Explicitly built w/o NDCTL, otherwise if ndtcl is present on the
-      # build system tests statically linking to librbd (which uses
-      # libpmemobj) will not link (because we don't build the ndctl
-      # static library here).
-      BUILD_COMMAND ${make_cmd} CC=${CMAKE_C_COMPILER} EXTRA_CFLAGS=-Wno-error NDCTL_ENABLE=n BUILD_EXAMPLES=n BUILD_BENCHMARKS=n DOC=n
+      BUILD_COMMAND ${make_cmd} CC=${CMAKE_C_COMPILER} EXTRA_CFLAGS=-Wno-error BUILD_EXAMPLES=n BUILD_BENCHMARKS=n DOC=n
       BUILD_IN_SOURCE 1
       BUILD_BYPRODUCTS "<SOURCE_DIR>/src/${PMDK_LIB_DIR}/libpmem.a" "<SOURCE_DIR>/src/${PMDK_LIB_DIR}/libpmemobj.a"
       INSTALL_COMMAND "")
@@ -48,7 +44,7 @@ function(build_pmem)
   set_target_properties(pmem::pmem PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PMDK_INCLUDE}
     IMPORTED_LOCATION "${PMDK_LIB}/libpmem.a"
-    INTERFACE_LINK_LIBRARIES Threads::Threads)
+    INTERFACE_LINK_LIBRARIES "Threads::Threads;ndctl::ndctl")
 
   # libpmemobj
   add_library(pmem::pmemobj STATIC IMPORTED GLOBAL)
