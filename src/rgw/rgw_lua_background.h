@@ -42,7 +42,7 @@ private:
   bool paused = false;
   int execute_interval;
   const DoutPrefix dp;
-  rgw::sal::Store* store;
+  std::unique_ptr<rgw::sal::LuaScriptManager> lua_script_manager; 
   CephContext* const cct;
   const std::string luarocks_path;
   std::thread runner;

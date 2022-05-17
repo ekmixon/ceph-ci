@@ -863,8 +863,8 @@ public:
 };
 
 class RadosLuaScriptManager : public LuaScriptManager {
-  RadosStore* store;
-  rgw_pool pool;
+  RadosStore* const store;
+  const rgw_pool pool;
 
 public:
   RadosLuaScriptManager(RadosStore* _s);

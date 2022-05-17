@@ -68,25 +68,20 @@ std::string script_oid(context ctx, const std::string& tenant) {
 }
 
 
-int read_script(const DoutPrefixProvider *dpp, rgw::sal::Store* store, const std::string& tenant, optional_yield y, context ctx, std::string& script)
+int read_script(const DoutPrefixProvider *dpp, sal::LuaScriptManager* manager, const std::string& tenant, optional_yield y, context ctx, std::string& script)
 {
-  auto lua_script = store->get_lua_script_manager();
-
-  return lua_script->get(dpp, y, script_oid(ctx, tenant), script);
+  return manager->get(dpp, y, script_oid(ctx, tenant), script);
 }
 
-int write_script(const DoutPrefixProvider *dpp, rgw::sal::Store* store, const std::string& tenant, optional_yield y, context ctx, const std::string& script)
+int write_script(const DoutPrefixProvider *dpp, sal::LuaScriptManager* manager, const std::string& tenant, optional_yield y, context ctx, const std::string& script)
 {
-  auto lua_script = store->get_lua_script_manager();
 
-  return lua_script->put(dpp, y, script_oid(ctx, tenant), script);
+  return manager->put(dpp, y, script_oid(ctx, tenant), script);
 }
 
-int delete_script(const DoutPrefixProvider *dpp, rgw::sal::Store* store, const std::string& tenant, optional_yield y, context ctx)
+int delete_script(const DoutPrefixProvider *dpp, sal::LuaScriptManager* manager, const std::string& tenant, optional_yield y, context ctx)
 {
-  auto lua_script = store->get_lua_script_manager();
-
-  return lua_script->del(dpp, y, script_oid(ctx, tenant));
+  return manager->del(dpp, y, script_oid(ctx, tenant));
 }
 
 #ifdef WITH_RADOSGW_LUA_PACKAGES

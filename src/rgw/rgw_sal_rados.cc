@@ -2946,13 +2946,17 @@ const std::string& RadosZone::get_realm_id()
   return store->svc()->zone->get_realm().get_id();
 }
 
-RadosLuaScriptManager::RadosLuaScriptManager(RadosStore* _s) : store(_s)
-{
-  pool = store->svc()->zone->get_zone_params().log_pool;
-}
+RadosLuaScriptManager::RadosLuaScriptManager(RadosStore* _s) : 
+  store(_s),
+  pool((store->svc() && store->svc()->zone) ? store->svc()->zone->get_zone_params().log_pool : rgw_pool())
+{ }
 
 int RadosLuaScriptManager::get(const DoutPrefixProvider* dpp, optional_yield y, const std::string& key, std::string& script)
 {
+  if (pool.empty()) {
+    ldpp_dout(dpp, 10) << "WARNING: missing pool when reading lua script " << dendl;
+    return 0;
+  }
   auto obj_ctx = store->svc()->sysobj->init_obj_ctx();
   bufferlist bl;
 
@@ -2973,6 +2977,10 @@ int RadosLuaScriptManager::get(const DoutPrefixProvider* dpp, optional_yield y, 
 
 int RadosLuaScriptManager::put(const DoutPrefixProvider* dpp, optional_yield y, const std::string& key, const std::string& script)
 {
+  if (pool.empty()) {
+    ldpp_dout(dpp, 10) << "WARNING: missing pool when writing lua script " << dendl;
+    return 0;
+  }
   auto obj_ctx = store->svc()->sysobj->init_obj_ctx();
   bufferlist bl;
   ceph::encode(script, bl);
@@ -2987,6 +2995,10 @@ int RadosLuaScriptManager::put(const DoutPrefixProvider* dpp, optional_yield y, 
 
 int RadosLuaScriptManager::del(const DoutPrefixProvider* dpp, optional_yield y, const std::string& key)
 {
+  if (pool.empty()) {
+    ldpp_dout(dpp, 10) << "WARNING: missing pool when deleting lua script " << dendl;
+    return 0;
+  }
   int r = rgw_delete_system_obj(dpp, store->svc()->sysobj, pool, key, nullptr, y);
   if (r < 0 && r != -ENOENT) {
     return r;
