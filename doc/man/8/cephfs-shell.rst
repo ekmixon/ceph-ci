@@ -164,6 +164,23 @@ Usage :
 
 * file - name of the file
 
+ln
+--
+
+Create a hard link or a symbolic link to an existing file or directory.
+
+Usage:
+
+    ln [options] <target> [link_name]
+
+* target - file/directory of which link is to be created
+* link_name - link to target with the name link_name
+
+Options:
+  -s, --symbolic  Create symbolic link
+  -v, --verbose   Print name of each linked file
+  -f, --force     Force create link/symbolic link
+
 cd
 --
 
