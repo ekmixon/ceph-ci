@@ -44,7 +44,7 @@ function(build_pmem)
   set_target_properties(pmem::pmem PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES ${PMDK_INCLUDE}
     IMPORTED_LOCATION "${PMDK_LIB}/libpmem.a"
-    INTERFACE_LINK_LIBRARIES "Threads::Threads;ndctl::ndctl")
+    INTERFACE_LINK_LIBRARIES "Threads::Threads;ndctl::ndctl;daxctl::daxctl")
 
   # libpmemobj
   add_library(pmem::pmemobj STATIC IMPORTED GLOBAL)

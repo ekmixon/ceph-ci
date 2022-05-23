@@ -484,6 +484,7 @@ endif()
 
 if(WITH_BLUESTORE_PMEM OR WITH_RBD_RWL)
   find_package(ndctl 63 REQUIRED)
+  find_package(daxctl 63 REQUIRED)
   if(WITH_SYSTEM_PMDK)
     set(pmem_COMPONENTS)
     if(WITH_BLUESTORE_PMEM)

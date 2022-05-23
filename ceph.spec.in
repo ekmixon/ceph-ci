@@ -292,6 +292,7 @@ BuildRequires:  libevent-devel
 %endif
 %if 0%{with system_pmdk}
 BuildRequires:  ndctl-devel
+BuildRequires:  daxctl-devel
 BuildRequires:  libpmem-devel
 BuildRequires:  libpmemobj-devel
 %endif
