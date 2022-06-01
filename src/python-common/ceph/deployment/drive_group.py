@@ -144,6 +144,7 @@ class DriveGroupSpec(ServiceSpec):
         "data_devices", "db_devices", "wal_devices", "journal_devices",
         "data_directories", "osds_per_device", "objectstore", "osd_id_claims",
         "journal_size", "unmanaged", "filter_logic", "preview_only", "extra_container_args",
+        "crush_device_class",
     ]
 
     def __init__(self,
@@ -168,6 +169,7 @@ class DriveGroupSpec(ServiceSpec):
                  filter_logic='AND',  # type: str
                  preview_only=False,  # type: bool
                  extra_container_args=None,  # type: Optional[List[str]]
+                 crush_device_class=None,  # type: Optional[str]
                  ):
         assert service_type is None or service_type == 'osd'
         super(DriveGroupSpec, self).__init__('osd', service_id=service_id,
@@ -226,6 +228,9 @@ class DriveGroupSpec(ServiceSpec):
 
         #: If this should be treated as a 'preview' spec
         self.preview_only = preview_only
+
+        #: Crush device class to assign to OSDs
+        self.crush_device_class = crush_device_class
 
     @classmethod
     def _from_json_impl(cls, json_drive_group):
