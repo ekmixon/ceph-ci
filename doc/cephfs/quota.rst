@@ -41,6 +41,13 @@ Limitations
    the directory the client is restricted too (e.g., ``/home/user``)
    or something nested beneath it.
 
+   In case of a kernel client, it needs to have access to the parent
+   of the directory inode on which quotas are configured in order to
+   enforce them. If quota is configured on a directory path
+   (e.g., ``/home/volumes/group``), the kclient needs to have access
+   to the parent (e.g., ``/home/volumes``).
+   See also: https://tracker.ceph.com/issues/55090
+
 #. *Snapshot file data which has since been deleted or changed does not count
    towards the quota.* See also: http://tracker.ceph.com/issues/24284
 
