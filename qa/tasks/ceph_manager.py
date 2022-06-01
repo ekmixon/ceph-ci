@@ -1545,8 +1545,9 @@ class CephManager:
         self.testdir = teuthology.get_testdir(self.ctx)
         # prefix args for ceph cmds to be executed
         pre = ['sudo', 'adjust-ulimits', 'ceph-coverage',
-               f'{self.testdir}/archive/coverage', 'timeout', '120']
-        self.ceph_cmd = pre + ['ceph', '--cluster', self.cluster]
+               f'{self.testdir}/archive/coverage']
+        self.ceph_cmd = pre + ['timeout', '120', 'ceph', '--cluster',
+                               self.cluster]
         self.rados_cmd = pre + ['rados', '--cluster', self.cluster]
         self.run_ceph_w_prefix = ['sudo', 'daemon-helper', 'kill', 'ceph',
                                   '--cluster', self.cluster]
