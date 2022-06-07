@@ -75,7 +75,8 @@ class MetadataManager(object):
 
         fd = None
         try:
-            fd = self.fs.open(self.config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, self.mode)
+            tmp_config_path = self.config_path + b'.tmp'
+            fd = self.fs.open(tmp_config_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, self.mode)
             wrote = 0
             while True:
                 data = conf_data.read()
@@ -83,7 +84,9 @@ class MetadataManager(object):
                     break
                 wrote += self.fs.write(fd, data.encode('utf-8'), -1)
             self.fs.fsync(fd, 0)
-            log.info("wrote {0} bytes to config {1}".format(wrote, self.config_path))
+            log.info("wrote {0} bytes to config {1}".format(wrote, tmp_config_path))
+            self.fs.rename(tmp_config_path, self.config_path)
+            log.info("Renamed {0} to config {1}".format(tmp_config_path, self.config_path))
         except cephfs.Error as e:
             raise MetadataMgrException(-e.args[0], e.args[1])
         finally:
