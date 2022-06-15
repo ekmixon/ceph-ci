@@ -1146,6 +1146,7 @@ namespace rgw::sal {
 
     obj_op.meta.owner = owner.get_id();
     obj_op.meta.flags = PUT_OBJ_CREATE;
+    obj_op.meta.category = RGWObjCategory::Main;
     obj_op.meta.modify_tail = true;
     obj_op.meta.completeMultipart = true;
 
@@ -1523,6 +1524,7 @@ namespace rgw::sal {
     parent_op.meta.if_nomatch = if_nomatch;
     parent_op.meta.user_data = user_data;
     parent_op.meta.zones_trace = zones_trace;
+    parent_op.meta.category = RGWObjCategory::Main;
     
     /* XXX: handle accounted size */
     accounted_size = total_data_size;
