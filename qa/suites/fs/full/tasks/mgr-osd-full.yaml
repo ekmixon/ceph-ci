@@ -19,3 +19,5 @@ tasks:
     clients:
       client.0:
         - fs/full/subvolume_rm.sh
+        - fs/full/subvolume_clone.sh
+        - fs/full/subvolume_snapshot_rm.sh
