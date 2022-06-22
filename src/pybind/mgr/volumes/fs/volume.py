@@ -15,6 +15,9 @@ from .operations.group import open_group, create_group, remove_group, \
     open_group_unique, set_group_attrs
 from .operations.subvolume import open_subvol, create_subvol, remove_subvol, \
     create_clone
+from .operations.versions.subvolume_base import SubvolumeBase
+from .operations.index import Index
+from .operations.group import Group
 from .operations.trash import Trash
 
 from .vol_spec import VolSpec
@@ -838,10 +841,15 @@ class VolumeClient(CephfsClient["Module"]):
         volname = kwargs['vol_name']
         ret     = 0, '[]', ""
         volume_exists = False
+        internal_dirs = [Index.GROUP_NAME.encode('utf-8'),
+                Trash.GROUP_NAME.encode('utf-8'),
+                SubvolumeBase.LEGACY_CONF_DIR.encode('utf-8'),
+                Group.NO_GROUP_NAME.encode('utf-8')]
+
         try:
             with open_volume(self, volname) as fs_handle:
                 volume_exists = True
-                groups = listdir(fs_handle, self.volspec.base_dir, filter_entries=[Trash.GROUP_NAME.encode('utf-8')])
+                groups = listdir(fs_handle, self.volspec.base_dir, filter_entries=internal_dirs)
                 ret = 0, name_to_json(groups), ""
         except VolumeException as ve:
             if not ve.errno == -errno.ENOENT or not volume_exists:

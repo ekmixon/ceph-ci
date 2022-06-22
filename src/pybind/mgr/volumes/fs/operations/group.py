@@ -18,10 +18,13 @@ class Group(GroupTemplate):
     # Reserved subvolume group name which we use in paths for subvolumes
     # that are not assigned to a group (i.e. created with group=None)
     NO_GROUP_NAME = "_nogroup"
+    INTERNAL_DIRS = ["_index", "_deleting", "_legacy"]
 
     def __init__(self, fs, vol_spec, groupname):
         if groupname == Group.NO_GROUP_NAME:
             raise VolumeException(-errno.EPERM, "Operation not permitted for group '{0}' as it is an internal group.".format(groupname))
+        if groupname in Group.INTERNAL_DIRS:
+            raise VolumeException(-errno.EINVAL, "'{0}' is an internal directory and not a valid group name.".format(groupname))
         self.fs = fs
         self.user_id = None
         self.group_id = None
