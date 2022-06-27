@@ -48,7 +48,6 @@ upgrade-tasks:
         - ceph orch upgrade check quay.ceph.io/ceph-ci/ceph:$sha1 | jq -e '.up_to_date | length == 2'
         - ceph orch ps
         - sleep 180
-        - ceph config set mgr mgr/orchestrator/fail_fs true
         - ceph orch upgrade start --image quay.ceph.io/ceph-ci/ceph:$sha1
   - cephadm.shell:
       env: [sha1]
