@@ -1,3 +1,5 @@
+meta:
+  fail_fs: true
 overrides:
   ceph:
     conf:
