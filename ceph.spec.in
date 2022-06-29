@@ -1366,7 +1366,7 @@ cmake .. \
 %if 0%{with system_pmdk}
     -DWITH_SYSTEM_PMDK:BOOL=ON \
 %endif
-%if 0%{without jaeger}
+%if 0%{without jaeger} || 0%{with seastar}
     -DWITH_JAEGER:BOOL=OFF \
 %endif
 %if 0%{?suse_version}
