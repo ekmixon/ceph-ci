@@ -618,7 +618,7 @@ class CephadmUpgrade:
             # scale down this filesystem?
             if mdsmap["max_mds"] > 1:
                 if self.upgrade_state.fail_fs:
-                    if not (mdsmap['flags'] & CEPH_MDSMAP_NOT_JOINABLE) or \
+                    if not (mdsmap['flags'] & CEPH_MDSMAP_NOT_JOINABLE) and \
                             len(mdsmap['up']) > 0:
                         self.mgr.log.info(f'Upgrade: failing fs {fs_name} for '
                                           f'rapid multi-rank mds upgrade')
@@ -715,6 +715,23 @@ class CephadmUpgrade:
             return False
 
         return True  # if mds has no fs it should pass ok-to-stop
+
+    def find_fs_ready_to_be_joinable(self, need_upgrade):
+        if len(need_upgrade) > 0:
+            logger.info(f'need_upgrade size: {len(need_upgrade)}')
+            fs_list = []
+            for fs in self.mgr.get("fs_map")['filesystems']:
+                cnt = 0
+                fs_name = fs["mdsmap"]["fs_name"]
+                for d_entry in need_upgrade:
+                    assert d_entry[0].daemon_id
+                    if d_entry[0].daemon_type == 'mds' and fs_name == \
+                            d_entry[0].service_name().split('.', 1)[1]:
+                        cnt += 1
+                if cnt <= 1:
+                    if fs_name not in fs_list:
+                        fs_list.append(fs_name)
+            return fs_list
 
     def _detect_need_upgrade(self, daemons: List[DaemonDescription], target_digests: Optional[List[str]] = None) -> Tuple[bool, List[Tuple[DaemonDescription, bool]], List[Tuple[DaemonDescription, bool]], int]:
         # this function takes a list of daemons and container digests. The purpose
@@ -949,18 +966,17 @@ class CephadmUpgrade:
             })
 
     def _complete_mds_upgrade(self) -> None:
-        assert self.upgrade_state is not None
-        if self.upgrade_state.fail_fs:
-            for fs in self.mgr.get("fs_map")['filesystems']:
-                fs_name = fs['mdsmap']['fs_name']
-                ret, _, err = self.mgr.check_mon_command({
-                    'prefix': 'fs set',
-                    'fs_name': fs_name,
-                    'var': 'joinable',
-                    'val': 'true',
-                })
-
-        elif self.upgrade_state.fs_original_max_mds:
+        # assert self.upgrade_state is not None
+        # if self.upgrade_state.fail_fs:
+        #     for fs in self.mgr.get("fs_map")['filesystems']:
+        #         fs_name = fs['mdsmap']['fs_name']
+        #         ret, _, err = self.mgr.check_mon_command({
+        #             'prefix': 'fs set',
+        #             'fs_name': fs_name,
+        #             'var': 'joinable',
+        #             'val': 'true',
+        #         })
+        if self.upgrade_state.fs_original_max_mds:
             for fs in self.mgr.get("fs_map")['filesystems']:
                 fscid = fs["id"]
                 fs_name = fs['mdsmap']['fs_name']
@@ -1165,6 +1181,31 @@ class CephadmUpgrade:
             if not _continue:
                 return
             self._upgrade_daemons(to_upgrade, target_image, target_digests)
+            if daemon_type == 'mds':
+                fs_list = self.find_fs_ready_to_be_joinable(need_upgrade)
+                logger.info(f'fs_list size: {len(fs_list)}')
+                logger.info(f'to_upgrade size: {len(to_upgrade)}')
+                if fs_list is not None:
+                    for fs_name in fs_list:
+                        assert self.upgrade_state is not None
+                        if fs_name in [_d[0].service_name().split('.', 1)[1]
+                                       for _d in to_upgrade]:
+                            if self.upgrade_state.fail_fs:
+                                self.mgr.log.info('Upgrade: Setting filesystem '
+                                                  f'{fs_name} Joinable')
+                                try:
+                                    ret, _, err = self.mgr.check_mon_command({
+                                        'prefix': 'fs set',
+                                        'fs_name': fs_name,
+                                        'var': 'joinable',
+                                        'val': 'true',
+                                    })
+                                except Exception as e:
+                                    logger.error("Failed to set fs joinable "
+                                                 f"true due to {e}")
+                                    raise OrchestratorError("Failed to set"
+                                                            "fs joinable true"
+                                                            f"due to {e}")
             if to_upgrade:
                 return
 
