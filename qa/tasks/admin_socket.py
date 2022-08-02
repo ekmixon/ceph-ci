@@ -101,20 +101,23 @@ def _socket_command(ctx, remote, socket_path, command, args):
                     ] + sub_command.split(' ') + args)
             except CommandFailedError as e:
                 ex = e
-                log.info('ceph cli "%s" returned an error %s, '
-                         'command not registered yet?', sub_command, e)
+                log.info(
+                    'ceph cli "%s" returned an error %s, '
+                    'command not registered yet?',
+                    sub_command,
+                    ex,
+                )
+
             else:
                 log.debug('admin socket command %s returned %s',
                           sub_command, out)
                 return json.loads(out)
-        else:
-            # exhausted all commands
-            log.info('sleeping and retrying ...')
-            time.sleep(1)
-    else:
-        # i tried max_tries times..
-        assert ex is not None
-        raise ex
+        # exhausted all commands
+        log.info('sleeping and retrying ...')
+        time.sleep(1)
+    # i tried max_tries times..
+    assert ex is not None
+    raise ex
 
 
 def _run_tests(ctx, client, tests):

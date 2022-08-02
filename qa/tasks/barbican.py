@@ -123,26 +123,46 @@ def set_authtoken_params(ctx, cclient, cconfig):
     section_config_list = cconfig['keystone_authtoken'].items()
     for config in section_config_list:
         (name, val) = config
-        run_in_barbican_dir(ctx, cclient,
-                            ['sed', '-i',
-                             '/[[]filter:authtoken]/{p;s##'+'{} = {}'.format(name, val)+'#;}',
-                             'etc/barbican/barbican-api-paste.ini'])
+        run_in_barbican_dir(
+            ctx,
+            cclient,
+            [
+                'sed',
+                '-i',
+                '/[[]filter:authtoken]/{p;s##' + f'{name} = {val}' + '#;}',
+                'etc/barbican/barbican-api-paste.ini',
+            ],
+        )
+
 
     keystone_role = cconfig.get('use-keystone-role', None)
     public_host, public_port = ctx.keystone.public_endpoints[keystone_role]
     url = 'http://{host}:{port}/v3'.format(host=public_host,
                                            port=public_port)
-    run_in_barbican_dir(ctx, cclient,
-                        ['sed', '-i',
-                         '/[[]filter:authtoken]/{p;s##'+'auth_uri = {}'.format(url)+'#;}',
-                         'etc/barbican/barbican-api-paste.ini'])
+    run_in_barbican_dir(
+        ctx,
+        cclient,
+        [
+            'sed',
+            '-i',
+            '/[[]filter:authtoken]/{p;s##' + f'auth_uri = {url}' + '#;}',
+            'etc/barbican/barbican-api-paste.ini',
+        ],
+    )
+
     admin_host, admin_port = ctx.keystone.admin_endpoints[keystone_role]
     admin_url = 'http://{host}:{port}/v3'.format(host=admin_host,
                                                  port=admin_port)
-    run_in_barbican_dir(ctx, cclient,
-                        ['sed', '-i',
-                         '/[[]filter:authtoken]/{p;s##'+'auth_url = {}'.format(admin_url)+'#;}',
-                         'etc/barbican/barbican-api-paste.ini'])
+    run_in_barbican_dir(
+        ctx,
+        cclient,
+        [
+            'sed',
+            '-i',
+            '/[[]filter:authtoken]/{p;s##' + f'auth_url = {admin_url}' + '#;}',
+            'etc/barbican/barbican-api-paste.ini',
+        ],
+    )
 
 def fix_barbican_api_paste(ctx, cclient):
     run_in_barbican_dir(ctx, cclient,
@@ -152,16 +172,27 @@ def fix_barbican_api_paste(ctx, cclient):
                          './etc/barbican/barbican-api-paste.ini'])
 
 def fix_barbican_api(ctx, cclient):
-    run_in_barbican_dir(ctx, cclient,
-                        ['sed', '-i',
-                         '/prop_dir =/ s#etc/barbican#{}/etc/barbican#'.format(get_barbican_dir(ctx)),
-                         'bin/barbican-api'])
+    run_in_barbican_dir(
+        ctx,
+        cclient,
+        [
+            'sed',
+            '-i',
+            f'/prop_dir =/ s#etc/barbican#{get_barbican_dir(ctx)}/etc/barbican#',
+            'bin/barbican-api',
+        ],
+    )
 
 def copy_policy_json(ctx, cclient):
-    run_in_barbican_dir(ctx, cclient,
-                        ['cp',
-                         get_barbican_dir(ctx)+'/etc/barbican/policy.json',
-                         get_barbican_dir(ctx)])
+    run_in_barbican_dir(
+        ctx,
+        cclient,
+        [
+            'cp',
+            f'{get_barbican_dir(ctx)}/etc/barbican/policy.json',
+            get_barbican_dir(ctx),
+        ],
+    )
 
 def create_barbican_conf(ctx, cclient):
     barbican_host, barbican_port = ctx.barbican.endpoints[cclient]
@@ -208,17 +239,30 @@ def run_barbican(ctx, config):
         # start the public endpoint
         client_public_with_id = 'barbican.public' + '.' + client_id
 
-        run_cmd = ['cd', get_barbican_dir(ctx), run.Raw('&&'),
-                   '.', '.barbicanenv/bin/activate', run.Raw('&&'),
-                   'HOME={}'.format(get_barbican_dir(ctx)), run.Raw('&&'),
-                   'bin/barbican-api',
-                   run.Raw('& { read; kill %1; }')]
-                   #run.Raw('1>/dev/null')
+        run_cmd = [
+            'cd',
+            get_barbican_dir(ctx),
+            run.Raw('&&'),
+            '.',
+            '.barbicanenv/bin/activate',
+            run.Raw('&&'),
+            f'HOME={get_barbican_dir(ctx)}',
+            run.Raw('&&'),
+            'bin/barbican-api',
+            run.Raw('& { read; kill %1; }'),
+        ]
 
-        run_cmd = 'cd ' + get_barbican_dir(ctx) + ' && ' + \
-                  '. .barbicanenv/bin/activate && ' + \
-                  'HOME={}'.format(get_barbican_dir(ctx)) + ' && ' + \
-                  'exec bin/barbican-api & { read; kill %1; }'
+        run_cmd = (
+            (
+                (
+                    f'cd {get_barbican_dir(ctx)} && '
+                    + '. .barbicanenv/bin/activate && '
+                )
+                + f'HOME={get_barbican_dir(ctx)}'
+            )
+            + ' && '
+        ) + 'exec bin/barbican-api & { read; kill %1; }'
+
 
         ctx.daemons.add_daemon(
             remote, 'barbican', client_public_with_id,
@@ -284,8 +328,7 @@ def create_secrets(ctx, config):
             }
         }))
     rgw_access_user_resp = token_req.getresponse()
-    if not (rgw_access_user_resp.status >= 200 and
-            rgw_access_user_resp.status < 300):
+    if rgw_access_user_resp.status < 200 or rgw_access_user_resp.status >= 300:
         raise Exception("Cannot authenticate user "+rgw_user["username"]+" for secret creation")
     #    baru_resp = json.loads(baru_req.data)
     rgw_access_user_data = json.loads(rgw_access_user_resp.read().decode())
@@ -329,8 +372,7 @@ def create_secrets(ctx, config):
                     }
                 }))
             token_resp = token_req.getresponse()
-            if not (token_resp.status >= 200 and
-                    token_resp.status < 300):
+            if token_resp.status < 200 or token_resp.status >= 300:
                 raise Exception("Cannot authenticate user "+secret["username"]+" for secret creation")
 
             expire = time.time() + 5400		# now + 90m
@@ -366,8 +408,10 @@ def create_secrets(ctx, config):
                 run_in_barbican_venv(ctx, cclient, ['sleep', '900'])
 
             barbican_sec_resp = sec_req.getresponse()
-            if not (barbican_sec_resp.status >= 200 and
-                    barbican_sec_resp.status < 300):
+            if (
+                barbican_sec_resp.status < 200
+                or barbican_sec_resp.status >= 300
+            ):
                 raise Exception("Cannot create secret")
             barbican_data = json.loads(barbican_sec_resp.read().decode())
             if 'secret_ref' not in barbican_data:
@@ -385,15 +429,20 @@ def create_secrets(ctx, config):
             acl_req = http.client.HTTPConnection(secret_url_parsed.netloc, timeout=30)
             acl_req.request(
                 'PUT',
-                secret_url_parsed.path+'/acl',
-                headers={'Content-Type': 'application/json',
-                         'Accept': '*/*',
-                         'X-Auth-Token': token_id},
-                body=acl_json
+                f'{secret_url_parsed.path}/acl',
+                headers={
+                    'Content-Type': 'application/json',
+                    'Accept': '*/*',
+                    'X-Auth-Token': token_id,
+                },
+                body=acl_json,
             )
+
             barbican_acl_resp = acl_req.getresponse()
-            if not (barbican_acl_resp.status >= 200 and
-                    barbican_acl_resp.status < 300):
+            if (
+                barbican_acl_resp.status < 200
+                or barbican_acl_resp.status >= 300
+            ):
                 raise Exception("Cannot set ACL for secret")
 
             key = {'id': secret_ref.split('secrets/')[1], 'payload': secret['base64']}

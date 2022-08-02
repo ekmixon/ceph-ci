@@ -18,13 +18,13 @@ def task(ctx, config):
           clients: [client.1]
     """
     log.info('Setting up ceph-iscsi client...')
+    path = "/etc/iscsi/initiatorname.iscsi"
     for role in config['clients']:
         (remote,) = (ctx.cluster.only(role).remotes.keys())
 
         conf = dedent('''
         InitiatorName=iqn.1994-05.com.redhat:client
         ''')
-        path = "/etc/iscsi/initiatorname.iscsi"
         remote.sudo_write_file(path, conf, mkdir=True)
 
         # the restart is needed after the above change is applied
@@ -49,8 +49,7 @@ def task(ctx, config):
                 }
         }
         ''')
-        path = "/etc/multipath.conf"
-        remote.sudo_write_file(path, conf, append=True)
+        remote.sudo_write_file("/etc/multipath.conf", conf, append=True)
         remote.run(args=['sudo', 'systemctl', 'start', 'multipathd'])
 
     yield

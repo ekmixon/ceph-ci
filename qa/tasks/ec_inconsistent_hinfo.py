@@ -11,14 +11,16 @@ from teuthology import misc as teuthology
 log = logging.getLogger(__name__)
 
 def wait_for_deep_scrub_complete(manager, pgid, check_time_now, inconsistent):
-    log.debug("waiting for pg %s deep-scrub complete (check_time_now=%s)" %
-              (pgid, check_time_now))
-    for i in range(300):
+    log.debug(
+        f"waiting for pg {pgid} deep-scrub complete (check_time_now={check_time_now})"
+    )
+
+    for _ in range(300):
         time.sleep(5)
         manager.flush_pg_stats([0, 1, 2, 3])
         pgs = manager.get_pg_stats()
         pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-        log.debug('pg=%s' % pg);
+        log.debug(f'pg={pg}');
         assert pg
 
         last_deep_scrub_time = parse(pg['last_deep_scrub_stamp']).strftime('%s')
@@ -37,14 +39,16 @@ def wait_for_deep_scrub_complete(manager, pgid, check_time_now, inconsistent):
 
 
 def wait_for_backfilling_complete(manager, pgid, from_osd, to_osd):
-    log.debug("waiting for pg %s backfill from osd.%s to osd.%s complete" %
-              (pgid, from_osd, to_osd))
-    for i in range(300):
+    log.debug(
+        f"waiting for pg {pgid} backfill from osd.{from_osd} to osd.{to_osd} complete"
+    )
+
+    for _ in range(300):
         time.sleep(5)
         manager.flush_pg_stats([0, 1, 2, 3])
         pgs = manager.get_pg_stats()
         pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-        log.info('pg=%s' % pg);
+        log.info(f'pg={pg}');
         assert pg
         status = pg['state'].split('+')
         if 'active' not in status:
@@ -100,7 +104,7 @@ def task(ctx, config):
     pgid = '%d.0' % pool_id
     pgs = manager.get_pg_stats()
     acting = next((pg['acting'] for pg in pgs if pg['pgid'] == pgid), None)
-    log.info("acting=%s" % acting)
+    log.info(f"acting={acting}")
     assert acting
     primary = acting[0]
 
@@ -119,8 +123,10 @@ def task(ctx, config):
 
     victim = acting[1]
 
-    log.info("remove test object hash info from osd.%s shard and test deep-scrub and repair"
-             % victim)
+    log.info(
+        f"remove test object hash info from osd.{victim} shard and test deep-scrub and repair"
+    )
+
 
     manager.objectstore_tool(pool, options='', args='rm-attr hinfo_key',
                              object_name=obj, osd=victim)
@@ -132,8 +138,10 @@ def task(ctx, config):
     manager.raw_cluster_cmd('pg', 'repair', pgid)
     wait_for_deep_scrub_complete(manager, pgid, check_time_now, False)
 
-    log.info("remove test object hash info from primary osd.%s shard and test backfill"
-             % primary)
+    log.info(
+        f"remove test object hash info from primary osd.{primary} shard and test backfill"
+    )
+
 
     log.debug("write some data")
     rados(ctx, mon, ['-p', pool, 'bench', '30', 'write', '-b', '4096',
@@ -154,7 +162,7 @@ def task(ctx, config):
     manager.flush_pg_stats([0, 1, 2, 3])
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug('pg=%s' % pg)
+    log.debug(f'pg={pg}')
     assert pg
     assert 'clean' in pg['state'].split('+')
     assert 'inconsistent' not in pg['state'].split('+')
@@ -163,8 +171,10 @@ def task(ctx, config):
     assert unfound == 0
 
     source, target = target, source
-    log.info("remove test object hash info from non-primary osd.%s shard and test backfill"
-             % source)
+    log.info(
+        f"remove test object hash info from non-primary osd.{source} shard and test backfill"
+    )
+
 
     manager.objectstore_tool(pool, options='', args='rm-attr hinfo_key',
                              object_name=obj, osd=source)
@@ -179,7 +189,7 @@ def task(ctx, config):
     manager.flush_pg_stats([0, 1, 2, 3])
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug('pg=%s' % pg)
+    log.debug(f'pg={pg}')
     assert pg
     assert 'clean' in pg['state'].split('+')
     assert 'inconsistent' not in pg['state'].split('+')
@@ -206,14 +216,14 @@ def task(ctx, config):
     manager.flush_pg_stats([0, 1, 2, 3])
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug('pg=%s' % pg)
+    log.debug(f'pg={pg}')
     assert pg
     assert 'backfill_unfound' in pg['state'].split('+')
     unfound = manager.get_num_unfound_objects()
     log.debug("there are %d unfound objects" % unfound)
     assert unfound == 1
     m = manager.list_pg_unfound(pgid)
-    log.debug('list_pg_unfound=%s' % m)
+    log.debug(f'list_pg_unfound={m}')
     assert m['num_unfound'] == pg['stat_sum']['num_objects_unfound']
 
     # mark stuff lost

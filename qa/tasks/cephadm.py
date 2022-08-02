@@ -35,18 +35,31 @@ log = logging.getLogger(__name__)
 def _shell(ctx, cluster_name, remote, args, extra_cephadm_args=[], **kwargs):
     teuthology.get_testdir(ctx)
     return remote.run(
-        args=[
-            'sudo',
-            ctx.cephadm,
-            '--image', ctx.ceph[cluster_name].image,
-            'shell',
-            '-c', '/etc/ceph/{}.conf'.format(cluster_name),
-            '-k', '/etc/ceph/{}.client.admin.keyring'.format(cluster_name),
-            '--fsid', ctx.ceph[cluster_name].fsid,
-            ] + extra_cephadm_args + [
-            '--',
-            ] + args,
-        **kwargs
+        args=(
+            (
+                (
+                    [
+                        'sudo',
+                        ctx.cephadm,
+                        '--image',
+                        ctx.ceph[cluster_name].image,
+                        'shell',
+                        '-c',
+                        f'/etc/ceph/{cluster_name}.conf',
+                        '-k',
+                        f'/etc/ceph/{cluster_name}.client.admin.keyring',
+                        '--fsid',
+                        ctx.ceph[cluster_name].fsid,
+                    ]
+                    + extra_cephadm_args
+                )
+                + [
+                    '--',
+                ]
+            )
+            + args
+        ),
+        **kwargs,
     )
 
 
@@ -62,7 +75,7 @@ def build_initial_config(ctx, config):
     # overrides
     for section, keys in config.get('conf',{}).items():
         for key, value in keys.items():
-            log.info(" override: [%s] %s = %s" % (section, key, value))
+            log.info(f" override: [{section}] {key} = {value}")
             if section not in conf:
                 conf[section] = {}
             conf[section][key] = value
@@ -125,7 +138,7 @@ def download_cephadm(ctx, config, ref):
     if config.get('cephadm_mode') != 'cephadm-package':
         ref = config.get('cephadm_branch', ref)
         git_url = config.get('cephadm_git_url', teuth_config.get_ceph_git_url())
-        log.info('Downloading cephadm (repo %s ref %s)...' % (git_url, ref))
+        log.info(f'Downloading cephadm (repo {git_url} ref {ref})...')
         if ctx.config.get('redhat'):
             log.info("Install cephadm using RPM")
             # cephadm already installed from redhat.install task
@@ -145,30 +158,37 @@ def download_cephadm(ctx, config, ref):
             rest = re.sub(r'\.git/?$', '', rest).strip() # no .git suffix
             ctx.cluster.run(
                 args=[
-                    'curl', '--silent',
-                    'https://raw.githubusercontent.com/' + rest + '/' + ref + '/src/cephadm/cephadm',
+                    'curl',
+                    '--silent',
+                    f'https://raw.githubusercontent.com/{rest}/{ref}/src/cephadm/cephadm',
                     run.Raw('>'),
                     ctx.cephadm,
                     run.Raw('&&'),
-                    'ls', '-l',
+                    'ls',
+                    '-l',
                     ctx.cephadm,
-                ],
+                ]
             )
+
         else:
             ctx.cluster.run(
                 args=[
-                    'git', 'archive',
-                    '--remote=' + git_url,
+                    'git',
+                    'archive',
+                    f'--remote={git_url}',
                     ref,
                     'src/cephadm/cephadm',
                     run.Raw('|'),
-                    'tar', '-xO', 'src/cephadm/cephadm',
+                    'tar',
+                    '-xO',
+                    'src/cephadm/cephadm',
                     run.Raw('>'),
                     ctx.cephadm,
-                ],
+                ]
             )
+
         # sanity-check the resulting file and set executable bit
-        cephadm_file_size = '$(stat -c%s {})'.format(ctx.cephadm)
+        cephadm_file_size = f'$(stat -c%s {ctx.cephadm})'
         ctx.cluster.run(
             args=[
                 'test', '-s', ctx.cephadm,
@@ -246,9 +266,7 @@ def ceph_log(ctx, config):
                 args=args,
             )
             stdout = r.stdout.getvalue()
-            if stdout != '':
-                return stdout
-            return None
+            return stdout if stdout != '' else None
 
         if first_in_ceph_log('\[ERR\]|\[WRN\]|\[SEC\]',
                              config.get('log-ignorelist')) is not None:
@@ -265,8 +283,10 @@ def ceph_log(ctx, config):
                             )
                         break
 
-        if ctx.archive is not None and \
-                not (ctx.config.get('archive-on-error') and ctx.summary['success']):
+        if ctx.archive is not None and (
+            not ctx.config.get('archive-on-error')
+            or not ctx.summary['success']
+        ):
             # and logs
             log.info('Compressing logs...')
             run.wait(
@@ -294,21 +314,15 @@ def ceph_log(ctx, config):
 
             log.info('Archiving logs...')
             path = os.path.join(ctx.archive, 'remote')
-            try:
+            with contextlib.suppress(OSError):
                 os.makedirs(path)
-            except OSError:
-                pass
             for remote in ctx.cluster.remotes.keys():
                 sub = os.path.join(path, remote.shortname)
-                try:
+                with contextlib.suppress(OSError):
                     os.makedirs(sub)
-                except OSError:
-                    pass
-                try:
+                with contextlib.suppress(ReadError):
                     teuthology.pull_directory(remote, '/var/log/ceph',  # everything
                                               os.path.join(sub, 'log'))
-                except ReadError:
-                    pass
 
 
 @contextlib.contextmanager
@@ -328,22 +342,18 @@ def ceph_crash(ctx, config):
         if ctx.archive is not None:
             log.info('Archiving crash dumps...')
             path = os.path.join(ctx.archive, 'remote')
-            try:
+            with contextlib.suppress(OSError):
                 os.makedirs(path)
-            except OSError:
-                pass
             for remote in ctx.cluster.remotes.keys():
                 sub = os.path.join(path, remote.shortname)
-                try:
+                with contextlib.suppress(OSError):
                     os.makedirs(sub)
-                except OSError:
-                    pass
-                try:
-                    teuthology.pull_directory(remote,
-                                              '/var/lib/ceph/%s/crash' % fsid,
-                                              os.path.join(sub, 'crash'))
-                except ReadError:
-                    pass
+                with contextlib.suppress(ReadError):
+                    teuthology.pull_directory(
+                        remote,
+                        f'/var/lib/ceph/{fsid}/crash',
+                        os.path.join(sub, 'crash'),
+                    )
 
 
 @contextlib.contextmanager
@@ -398,46 +408,59 @@ def ceph_bootstrap(ctx, config):
         seed_config = build_initial_config(ctx, config)
         seed_config.write(conf_fp)
         bootstrap_remote.write_file(
-            path='{}/seed.{}.conf'.format(testdir, cluster_name),
-            data=conf_fp.getvalue())
+            path=f'{testdir}/seed.{cluster_name}.conf', data=conf_fp.getvalue()
+        )
+
         log.debug('Final config:\n' + conf_fp.getvalue().decode())
         ctx.ceph[cluster_name].conf = seed_config
 
         # register initial daemons
         ctx.daemons.register_daemon(
-            bootstrap_remote, 'mon', first_mon,
+            bootstrap_remote,
+            'mon',
+            first_mon,
             cluster=cluster_name,
             fsid=fsid,
-            logger=log.getChild('mon.' + first_mon),
+            logger=log.getChild(f'mon.{first_mon}'),
             wait=False,
             started=True,
         )
+
         if not ctx.ceph[cluster_name].roleless:
             first_mgr = ctx.ceph[cluster_name].first_mgr
             ctx.daemons.register_daemon(
-                bootstrap_remote, 'mgr', first_mgr,
+                bootstrap_remote,
+                'mgr',
+                first_mgr,
                 cluster=cluster_name,
                 fsid=fsid,
-                logger=log.getChild('mgr.' + first_mgr),
+                logger=log.getChild(f'mgr.{first_mgr}'),
                 wait=False,
                 started=True,
             )
+
 
         # bootstrap
         log.info('Bootstrapping...')
         cmd = [
             'sudo',
             ctx.cephadm,
-            '--image', ctx.ceph[cluster_name].image,
+            '--image',
+            ctx.ceph[cluster_name].image,
             '-v',
             'bootstrap',
-            '--fsid', fsid,
-            '--config', '{}/seed.{}.conf'.format(testdir, cluster_name),
-            '--output-config', '/etc/ceph/{}.conf'.format(cluster_name),
+            '--fsid',
+            fsid,
+            '--config',
+            f'{testdir}/seed.{cluster_name}.conf',
+            '--output-config',
+            f'/etc/ceph/{cluster_name}.conf',
             '--output-keyring',
-            '/etc/ceph/{}.client.admin.keyring'.format(cluster_name),
-            '--output-pub-ssh-key', '{}/{}.pub'.format(testdir, cluster_name),
+            f'/etc/ceph/{cluster_name}.client.admin.keyring',
+            '--output-pub-ssh-key',
+            f'{testdir}/{cluster_name}.pub',
         ]
+
 
         if config.get('registry-login'):
             registry = config['registry-login']
@@ -470,9 +493,12 @@ def ceph_bootstrap(ctx, config):
         # bootstrap makes the keyring root 0600, so +r it for our purposes
         cmd += [
             run.Raw('&&'),
-            'sudo', 'chmod', '+r',
-            '/etc/ceph/{}.client.admin.keyring'.format(cluster_name),
+            'sudo',
+            'chmod',
+            '+r',
+            f'/etc/ceph/{cluster_name}.client.admin.keyring',
         ]
+
         bootstrap_remote.run(args=cmd)
 
         # fetch keys and configs
@@ -521,15 +547,19 @@ def ceph_bootstrap(ctx, config):
 
             # note: this may be redundant (see above), but it avoids
             # us having to wait for cephadm to do it.
-            log.info('Writing (initial) conf and keyring to %s' % remote.shortname)
+            log.info(f'Writing (initial) conf and keyring to {remote.shortname}')
             remote.write_file(
-                path='/etc/ceph/{}.conf'.format(cluster_name),
-                data=ctx.ceph[cluster_name].config_file)
-            remote.write_file(
-                path='/etc/ceph/{}.client.admin.keyring'.format(cluster_name),
-                data=ctx.ceph[cluster_name].admin_keyring)
+                path=f'/etc/ceph/{cluster_name}.conf',
+                data=ctx.ceph[cluster_name].config_file,
+            )
 
-            log.info('Adding host %s to orchestrator...' % remote.shortname)
+            remote.write_file(
+                path=f'/etc/ceph/{cluster_name}.client.admin.keyring',
+                data=ctx.ceph[cluster_name].admin_keyring,
+            )
+
+
+            log.info(f'Adding host {remote.shortname} to orchestrator...')
             _shell(ctx, cluster_name, bootstrap_remote, [
                 'ceph', 'orch', 'host', 'add',
                 remote.shortname
@@ -544,11 +574,15 @@ def ceph_bootstrap(ctx, config):
 
     finally:
         log.info('Cleaning up testdir ceph.* files...')
-        ctx.cluster.run(args=[
-            'rm', '-f',
-            '{}/seed.{}.conf'.format(testdir, cluster_name),
-            '{}/{}.pub'.format(testdir, cluster_name),
-        ])
+        ctx.cluster.run(
+            args=[
+                'rm',
+                '-f',
+                f'{testdir}/seed.{cluster_name}.conf',
+                f'{testdir}/{cluster_name}.pub',
+            ]
+        )
+
 
         log.info('Stopping all daemons...')
 
@@ -578,11 +612,15 @@ def ceph_bootstrap(ctx, config):
         )
 
         # clean up /etc/ceph
-        ctx.cluster.run(args=[
-            'sudo', 'rm', '-f',
-            '/etc/ceph/{}.conf'.format(cluster_name),
-            '/etc/ceph/{}.client.admin.keyring'.format(cluster_name),
-        ])
+        ctx.cluster.run(
+            args=[
+                'sudo',
+                'rm',
+                '-f',
+                f'/etc/ceph/{cluster_name}.conf',
+                f'/etc/ceph/{cluster_name}.client.admin.keyring',
+            ]
+        )
 
 
 @contextlib.contextmanager

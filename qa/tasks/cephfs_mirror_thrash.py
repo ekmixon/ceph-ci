@@ -160,11 +160,9 @@ class CephFSMirrorThrasher(Thrasher, Greenlet):
                     except:
                         self.log('Failed to stop {label}'.format(label=daemon.id_))
 
-                        try:
+                        with contextlib.suppress(socket.error):
                             # try to capture a core dump
                             daemon.signal(signal.SIGABRT)
-                        except socket.error:
-                            pass
                         raise
                     finally:
                         daemon.reset()
@@ -173,8 +171,8 @@ class CephFSMirrorThrasher(Thrasher, Greenlet):
                     self.log('reviving {label}'.format(label=daemon.id_))
                     daemon.start()
 
-        for stat in stats:
-            self.log("stat['{key}'] = {value}".format(key = stat, value = stats[stat]))
+        for stat, value_ in stats.items():
+            self.log("stat['{key}'] = {value}".format(key = stat, value=value_))
 
 @contextlib.contextmanager
 def task(ctx, config):
@@ -192,14 +190,13 @@ def task(ctx, config):
 
     cluster = config.get('cluster', 'ceph')
     daemons = list(ctx.daemons.iter_daemons_of_role('cephfs-mirror', cluster))
-    assert len(daemons) > 0, \
-        'cephfs_mirror_thrash task requires at least 1 cephfs-mirror daemon'
+    assert (
+        daemons
+    ), 'cephfs_mirror_thrash task requires at least 1 cephfs-mirror daemon'
+
 
     # choose random seed
-    if 'seed' in config:
-        seed = int(config['seed'])
-    else:
-        seed = int(time.time())
+    seed = int(config['seed']) if 'seed' in config else int(time.time())
     log.info('cephfs_mirror_thrash using random seed: {seed}'.format(seed=seed))
     random.seed(seed)
 

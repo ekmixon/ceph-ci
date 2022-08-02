@@ -10,24 +10,24 @@ from teuthology import misc as teuthology
 log = logging.getLogger(__name__)
 
 def wait_for_pg_state(manager, pgid, state, to_osd):
-    log.debug("waiting for pg %s state is %s" % (pgid, state))
-    for i in range(300):
+    log.debug(f"waiting for pg {pgid} state is {state}")
+    for _ in range(300):
         time.sleep(5)
         manager.flush_pg_stats([0, 1, 2, 3])
         pgs = manager.get_pg_stats()
         pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-        log.info('pg=%s' % pg);
+        log.info(f'pg={pg}');
         assert pg
         status = pg['state'].split('+')
         if 'active' not in status:
             log.debug('not active')
             continue
         if state not in status:
-            log.debug('not %s' % state)
+            log.debug(f'not {state}')
             continue
         assert to_osd in pg['up']
         return
-    assert False, '%s not in %s' % (pgid, state)
+    assert False, f'{pgid} not in {state}'
 
 
 def task(ctx, config):
@@ -70,7 +70,7 @@ def task(ctx, config):
     pgid = '%d.0' % pool_id
     pgs = manager.get_pg_stats()
     acting = next((pg['acting'] for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug("acting=%s" % acting)
+    log.debug(f"acting={acting}")
     assert acting
     primary = acting[0]
     target = acting[1]
@@ -78,7 +78,7 @@ def task(ctx, config):
     log.debug("write some data")
     rados(ctx, mon, ['-p', pool, 'bench', '120', 'write', '--no-cleanup'])
     df = manager.get_osd_df(target)
-    log.debug("target osd df: %s" % df)
+    log.debug(f"target osd df: {df}")
 
     total_kb = df['kb']
     used_kb = df['kb_used']
@@ -88,13 +88,13 @@ def task(ctx, config):
     manager.raw_cluster_cmd('osd', 'set', 'nobackfill')
     manager.raw_cluster_cmd('osd', 'set', 'norecover')
 
-    log.debug("stop tartget osd %s" % target)
+    log.debug(f"stop tartget osd {target}")
     manager.kill_osd(target)
     manager.wait_till_active()
 
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug('pg=%s' % pg)
+    log.debug(f'pg={pg}')
     assert pg
 
     log.debug("re-write data")
@@ -103,7 +103,7 @@ def task(ctx, config):
     rados(ctx, mon, ['-p', pool, 'bench', '60', 'write', '--no-cleanup'])
 
     df = manager.get_osd_df(primary)
-    log.debug("primary osd df: %s" % df)
+    log.debug(f"primary osd df: {df}")
 
     primary_used_kb = df['kb_used']
 
@@ -117,14 +117,16 @@ def task(ctx, config):
     backfillfull = 0.9 * primary_used_kb / total_kb
     nearfull = backfillfull * 0.9
 
-    log.debug("update nearfull ratio to %s and backfillfull ratio to %s" %
-              (nearfull, backfillfull))
+    log.debug(
+        f"update nearfull ratio to {nearfull} and backfillfull ratio to {backfillfull}"
+    )
+
     manager.raw_cluster_cmd('osd', 'set-nearfull-ratio',
                             '{:.3f}'.format(nearfull + 0.001))
     manager.raw_cluster_cmd('osd', 'set-backfillfull-ratio',
                             '{:.3f}'.format(backfillfull + 0.001))
 
-    log.debug("start tartget osd %s" % target)
+    log.debug(f"start tartget osd {target}")
 
     manager.revive_osd(target)
     manager.wait_for_active()
@@ -145,11 +147,11 @@ def task(ctx, config):
     # We also need to update nearfull ratio to prevent "full ratio(s) out of order".
 
     pdf = manager.get_pool_df(pool)
-    log.debug("pool %s df: %s" % (pool, pdf))
+    log.debug(f"pool {pool} df: {pdf}")
     assert pdf
     compress_ratio = 1.0 * pdf['compress_under_bytes'] / pdf['compress_bytes_used'] \
         if pdf['compress_bytes_used'] > 0 else 1.0
-    log.debug("compress_ratio: %s" % compress_ratio)
+    log.debug(f"compress_ratio: {compress_ratio}")
 
     backfillfull = (used_kb + primary_used_kb) * compress_ratio / total_kb
     assert backfillfull < 0.9
@@ -159,8 +161,10 @@ def task(ctx, config):
     nearfull = nearfull_min + delta * 0.1
     backfillfull = nearfull_min + delta * 0.2
 
-    log.debug("update nearfull ratio to %s and backfillfull ratio to %s" %
-              (nearfull, backfillfull))
+    log.debug(
+        f"update nearfull ratio to {nearfull} and backfillfull ratio to {backfillfull}"
+    )
+
     manager.raw_cluster_cmd('osd', 'set-nearfull-ratio',
                             '{:.3f}'.format(nearfull + 0.001))
     manager.raw_cluster_cmd('osd', 'set-backfillfull-ratio',
@@ -170,10 +174,10 @@ def task(ctx, config):
 
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.debug('pg=%s' % pg)
+    log.debug(f'pg={pg}')
     assert pg
 
-    log.debug("interrupt %s backfill" % target)
+    log.debug(f"interrupt {target} backfill")
     manager.mark_down_osd(target)
     # after marking the target osd down it will automatically be
     # up soon again
@@ -188,6 +192,6 @@ def task(ctx, config):
 
     pgs = manager.get_pg_stats()
     pg = next((pg for pg in pgs if pg['pgid'] == pgid), None)
-    log.info('pg=%s' % pg)
+    log.info(f'pg={pg}')
     assert pg
     assert 'clean' in pg['state'].split('+')

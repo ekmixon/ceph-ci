@@ -54,10 +54,13 @@ def task(ctx, config):
     log.info('Mounting cifs clients...')
 
     if config is None:
-        config = dict(('client.{id}'.format(id=id_), None)
-                  for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client'))
+        config = {
+            'client.{id}'.format(id=id_): None
+            for id_ in teuthology.all_roles_of_type(ctx.cluster, 'client')
+        }
+
     elif isinstance(config, list):
-        config = dict((name, None) for name in config)
+        config = {name: None for name in config}
 
     clients = list(teuthology.get_clients(ctx=ctx, roles=config.keys()))
 

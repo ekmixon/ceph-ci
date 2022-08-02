@@ -50,13 +50,10 @@ class ForwardScrubber(Thrasher, Greenlet):
         """
         self.logger.info(f'start scrubbing fs: {self.fs.name}')
 
-        try:
+        with contextlib.suppress(GreenletExit):
             while not self.stopping.is_set():
                 self._scrub()
                 sleep(self.sleep_between_iterations)
-        except GreenletExit:
-            pass
-
         self.logger.info(f'end scrubbing fs: {self.fs.name}')
 
     def _scrub(self, path="/", recursive=True):
@@ -105,8 +102,7 @@ def task(ctx, config):
     assert isinstance(config, dict), \
         'fwd_scrub task only accepts a dict for configuration'
     mdslist = list(teuthology.all_roles_of_type(ctx.cluster, 'mds'))
-    assert len(mdslist) > 0, \
-        'fwd_scrub task requires at least 1 metadata server'
+    assert mdslist, 'fwd_scrub task requires at least 1 metadata server'
 
     (first,) = ctx.cluster.only(f'mds.{mdslist[0]}').remotes.keys()
     manager = ceph_manager.CephManager(

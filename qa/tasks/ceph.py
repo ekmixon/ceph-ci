@@ -106,21 +106,15 @@ def ceph_crash(ctx, config):
         if ctx.archive is not None:
             log.info('Archiving crash dumps...')
             path = os.path.join(ctx.archive, 'remote')
-            try:
+            with contextlib.suppress(OSError):
                 os.makedirs(path)
-            except OSError:
-                pass
             for remote in ctx.cluster.remotes.keys():
                 sub = os.path.join(path, remote.shortname)
-                try:
+                with contextlib.suppress(OSError):
                     os.makedirs(sub)
-                except OSError:
-                    pass
-                try:
+                with contextlib.suppress(ReadError):
                     teuthology.pull_directory(remote, '/var/lib/ceph/crash',
                                               os.path.join(sub, 'crash'))
-                except ReadError:
-                    pass
 
 
 @contextlib.contextmanager
@@ -222,7 +216,7 @@ def ceph_log(ctx, config):
 
     def write_rotate_conf(ctx, daemons):
         testdir = teuthology.get_testdir(ctx)
-        remote_logrotate_conf = '%s/logrotate.ceph-test.conf' % testdir
+        remote_logrotate_conf = f'{testdir}/logrotate.ceph-test.conf'
         rotate_conf_path = os.path.join(os.path.dirname(__file__), 'logrotate.conf')
         with open(rotate_conf_path) as f:
             conf = ""
@@ -243,7 +237,7 @@ def ceph_log(ctx, config):
 
     if ctx.config.get('log-rotate'):
         daemons = ctx.config.get('log-rotate')
-        log.info('Setting up log rotation with ' + str(daemons))
+        log.info(f'Setting up log rotation with {str(daemons)}')
         write_rotate_conf(ctx, daemons)
         logrotater = Rotater()
         logrotater.begin()
@@ -283,16 +277,12 @@ def ceph_log(ctx, config):
 
             log.info('Archiving logs...')
             path = os.path.join(ctx.archive, 'remote')
-            try:
+            with contextlib.suppress(OSError):
                 os.makedirs(path)
-            except OSError:
-                pass
             for remote in ctx.cluster.remotes.keys():
                 sub = os.path.join(path, remote.shortname)
-                try:
+                with contextlib.suppress(OSError):
                     os.makedirs(sub)
-                except OSError:
-                    pass
                 teuthology.pull_directory(remote, '/var/log/ceph',
                                           os.path.join(sub, 'log'))
 
@@ -321,7 +311,7 @@ def valgrind_post(ctx, config):
     try:
         yield
     finally:
-        lookup_procs = list()
+        lookup_procs = []
         log.info('Checking for errors in any valgrind logs...')
         for remote in ctx.cluster.remotes.keys():
             # look at valgrind logs for each node
@@ -357,9 +347,8 @@ def valgrind_post(ctx, config):
         if config.get('expect_valgrind_errors'):
             if not valgrind_exception:
                 raise Exception('expected valgrind issues and found none')
-        else:
-            if valgrind_exception:
-                raise valgrind_exception
+        elif valgrind_exception:
+            raise valgrind_exception
 
 
 @contextlib.contextmanager
@@ -588,21 +577,19 @@ def create_simple_monmap(ctx, remote, conf, mons,
     ])
 
     monmap_output = remote.sh(args)
-    fsid = re.search("generated fsid (.+)$",
-                     monmap_output, re.MULTILINE).group(1)
+    fsid = re.search("generated fsid (.+)$", monmap_output, re.MULTILINE)[1]
+
     teuthology.delete_file(remote, tmp_conf_path)
     return fsid
 
 
 def maybe_redirect_stderr(config, type_, args, log_path):
-    if type_ == 'osd' and \
-       config.get('flavor', 'default') == 'crimson':
-        # teuthworker uses ubuntu:ubuntu to access the test nodes
-        create_log_cmd = \
-            f'sudo install -b -o ubuntu -g ubuntu /dev/null {log_path}'
-        return create_log_cmd, args + [run.Raw('2>>'), log_path]
-    else:
+    if type_ != 'osd' or config.get('flavor', 'default') != 'crimson':
         return None, args
+    # teuthworker uses ubuntu:ubuntu to access the test nodes
+    create_log_cmd = \
+        f'sudo install -b -o ubuntu -g ubuntu /dev/null {log_path}'
+    return create_log_cmd, args + [run.Raw('2>>'), log_path]
 
 
 @contextlib.contextmanager

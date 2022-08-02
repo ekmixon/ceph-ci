@@ -188,31 +188,32 @@ class MDSThrasher(Thrasher, Greenlet):
             status = self.fs.status()
             max_mds = status.get_fsmap(self.fs.id)['mdsmap']['max_mds']
             ranks = list(status.get_ranks(self.fs.id))
-            stopping = sum(1 for _ in ranks if "up:stopping" == _['state'])
-            actives = sum(1 for _ in ranks
-                          if "up:active" == _['state'] and "laggy_since" not in _)
+            stopping = sum(_['state'] == "up:stopping" for _ in ranks)
+            actives = sum(
+                _['state'] == "up:active" and "laggy_since" not in _ for _ in ranks
+            )
+
 
             if not bool(self.config.get('thrash_while_stopping', False)) and stopping > 0:
                 if itercount % 5 == 0:
                     self.log('cluster is considered unstable while MDS are in up:stopping (!thrash_while_stopping)')
+            elif rank is None:
+                if actives == max_mds:
+                    self.log('mds cluster has {count} alive and active, now stable!'.format(count = actives))
+                    return status, None
             else:
-                if rank is not None:
-                    try:
-                        info = status.get_rank(self.fs.id, rank)
-                        if info['gid'] != gid and "up:active" == info['state']:
-                            self.log('mds.{name} has gained rank={rank}, replacing gid={gid}'.format(name = info['name'], rank = rank, gid = gid))
-                            return status
-                    except:
-                        pass # no rank present
-                    if actives >= max_mds:
-                        # no replacement can occur!
-                        self.log("cluster has {actives} actives (max_mds is {max_mds}), no MDS can replace rank {rank}".format(
-                            actives=actives, max_mds=max_mds, rank=rank))
+                try:
+                    info = status.get_rank(self.fs.id, rank)
+                    if info['gid'] != gid and info['state'] == "up:active":
+                        self.log('mds.{name} has gained rank={rank}, replacing gid={gid}'.format(name = info['name'], rank = rank, gid = gid))
                         return status
-                else:
-                    if actives == max_mds:
-                        self.log('mds cluster has {count} alive and active, now stable!'.format(count = actives))
-                        return status, None
+                except:
+                    pass # no rank present
+                if actives >= max_mds:
+                    # no replacement can occur!
+                    self.log("cluster has {actives} actives (max_mds is {max_mds}), no MDS can replace rank {rank}".format(
+                        actives=actives, max_mds=max_mds, rank=rank))
+                    return status
             if itercount > 300/2: # 5 minutes
                  raise RuntimeError('timeout waiting for cluster to stabilize')
             elif itercount % 5 == 0:
@@ -248,8 +249,9 @@ class MDSThrasher(Thrasher, Greenlet):
 
             if random.random() <= self.thrash_max_mds:
                 max_mds = status.get_fsmap(self.fs.id)['mdsmap']['max_mds']
-                options = [i for i in range(1, self.max_mds + 1) if i != max_mds]
-                if len(options) > 0:
+                if options := [
+                    i for i in range(1, self.max_mds + 1) if i != max_mds
+                ]:
                     new_max_mds = random.choice(options)
                     self.log('thrashing max_mds: %d -> %d' % (max_mds, new_max_mds))
                     self.fs.set_max_mds(new_max_mds)
@@ -259,7 +261,7 @@ class MDSThrasher(Thrasher, Greenlet):
             count = 0
             for info in status.get_ranks(self.fs.id):
                 name = info['name']
-                label = 'mds.' + name
+                label = f'mds.{name}'
                 rank = info['rank']
                 gid = info['gid']
 
@@ -292,7 +294,10 @@ class MDSThrasher(Thrasher, Greenlet):
                     if 'laggy_since' in info:
                         last_laggy_since = info['laggy_since']
                         break
-                    if any([(f == name) for f in status.get_fsmap(self.fs.id)['mdsmap']['failed']]):
+                    if any(
+                        f == name
+                        for f in status.get_fsmap(self.fs.id)['mdsmap']['failed']
+                    ):
                         break
                     self.log(
                         'waiting till mds map indicates {label} is laggy/crashed, in failed state, or {label} is removed from mdsmap'.format(
@@ -336,8 +341,8 @@ class MDSThrasher(Thrasher, Greenlet):
                         'waiting till mds map indicates {label} is in active, standby or standby-replay'.format(label=label))
                     sleep(2)
 
-        for stat in stats:
-            self.log("stat['{key}'] = {value}".format(key = stat, value = stats[stat]))
+        for stat, value_ in stats.items():
+            self.log("stat['{key}'] = {value}".format(key = stat, value=value_))
 
              # don't do replay thrashing right now
 #            for info in status.get_replays(self.fs.id):
@@ -383,10 +388,7 @@ def task(ctx, config):
         'mds_thrash task requires at least 2 metadata servers'
 
     # choose random seed
-    if 'seed' in config:
-        seed = int(config['seed'])
-    else:
-        seed = int(time.time())
+    seed = int(config['seed']) if 'seed' in config else int(time.time())
     log.info('mds thrasher using random seed: {seed}'.format(seed=seed))
     random.seed(seed)
 

@@ -132,7 +132,7 @@ def task(ctx, config):
     for role, cnames in config.items():
         remote = get_remote_for_role(ctx, role)
         if remote is None:
-            raise ConfigError('no remote for role %s' % role)
+            raise ConfigError(f'no remote for role {role}')
 
         names = remote_names.get(remote, {})
 
@@ -147,7 +147,7 @@ def task(ctx, config):
             for cname, client in cnames.items():
                 r = get_remote_for_role(ctx, client)
                 if r is None:
-                    raise ConfigError('no remote for role %s' % client)
+                    raise ConfigError(f'no remote for role {client}')
                 if cname.endswith('.'):
                     cname += r.hostname
                 names[cname] = r.ip_address
@@ -161,10 +161,14 @@ def task(ctx, config):
     # run subtasks for each unique remote
     subtasks = []
     for remote, cnames in remote_names.items():
-        subtasks.extend([ lambda r=remote: install_dnsmasq(r) ])
-        subtasks.extend([ lambda r=remote: backup_resolv(r, resolv_bak) ])
-        subtasks.extend([ lambda r=remote: replace_resolv(r, resolv_tmp) ])
-        subtasks.extend([ lambda r=remote, cn=cnames: setup_dnsmasq(r, testdir, cn) ])
+        subtasks.extend(
+            [
+                lambda r=remote: install_dnsmasq(r),
+                lambda r=remote: backup_resolv(r, resolv_bak),
+                lambda r=remote: replace_resolv(r, resolv_tmp),
+                lambda r=remote, cn=cnames: setup_dnsmasq(r, testdir, cn),
+            ]
+        )
 
     with contextutil.nested(*subtasks):
         yield

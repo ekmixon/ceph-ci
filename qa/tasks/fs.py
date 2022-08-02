@@ -27,10 +27,12 @@ def pre_upgrade_save(ctx, config):
     for fs in list(status.get_filesystems()):
         fscid = fs['id']
         mdsmap = fs['mdsmap']
-        fs_state = {}
-        fs_state['epoch'] = mdsmap['epoch']
-        fs_state['max_mds'] = mdsmap['max_mds']
-        fs_state['flags'] = mdsmap['flags'] & UPGRADE_FLAGS_MASK
+        fs_state = {
+            'epoch': mdsmap['epoch'],
+            'max_mds': mdsmap['max_mds'],
+            'flags': mdsmap['flags'] & UPGRADE_FLAGS_MASK,
+        }
+
         state[fscid] = fs_state
         log.debug(f"fs fscid={fscid},name={mdsmap['fs_name']} state = {fs_state}")
 
@@ -63,7 +65,7 @@ def post_upgrade_checks(ctx, config):
         did_decrease_max_mds = False
         should_disable_allow_standby_replay = fs_state['flags'] & CEPH_MDSMAP_ALLOW_STANDBY_REPLAY
         did_disable_allow_standby_replay = False
-        for i in range(pre_upgrade_epoch+1, mdsmap['epoch']):
+        for i in range(pre_upgrade_epoch+1, epoch):
             old_status = mdsc.status(epoch=i)
             old_fs = old_status.get_fsmap(fscid)
             old_mdsmap = old_fs['mdsmap']
@@ -109,9 +111,9 @@ def clients_evicted(ctx, config):
     clients = config.get('clients')
 
     if clients is None:
-        clients = {("client."+client_id): True for client_id in ctx.mounts}
+        clients = {f"client.{client_id}": True for client_id in ctx.mounts}
 
-    log.info("clients is {}".format(str(clients)))
+    log.info(f"clients is {str(clients)}")
 
     fs = Filesystem(ctx)
     status = fs.status()
@@ -131,10 +133,9 @@ def clients_evicted(ctx, config):
                     global_id = mount.get_global_id()
                     if session['id'] == global_id:
                         if evicted:
-                            raise RuntimeError("client still has session: {}".format(str(session)))
-                        else:
-                            log.info("client {} has a session with MDS {}.{}".format(client, fs.id, rank['rank']))
-                            has_session.add(client)
+                            raise RuntimeError(f"client still has session: {str(session)}")
+                        log.info(f"client {client} has a session with MDS {fs.id}.{rank['rank']}")
+                        has_session.add(client)
 
     no_session = set(clients) - has_session
     should_assert = False
@@ -142,10 +143,13 @@ def clients_evicted(ctx, config):
         mount = mounts.get(client)
         if mount is not None:
             if evicted:
-                log.info("confirming client {} is blocklisted".format(client))
+                log.info(f"confirming client {client} is blocklisted")
                 assert fs.is_addr_blocklisted(mount.get_global_addr())
             elif client in no_session:
-                log.info("client {} should not be evicted but has no session with an MDS".format(client))
+                log.info(
+                    f"client {client} should not be evicted but has no session with an MDS"
+                )
+
                 fs.is_addr_blocklisted(mount.get_global_addr()) # for debugging
                 should_assert = True
     if should_assert:

@@ -130,7 +130,7 @@ class PrometheusRule:
 
     @property
     def has_oid(self):
-        return True if self.rule.get('labels', {}).get('oid', '') else False
+        return bool(self.rule.get('labels', {}).get('oid', ''))
 
     @property
     def labels(self) -> Dict[str, str]:
@@ -143,19 +143,19 @@ class PrometheusRule:
     def _check_alert_name(self):
         # this is simplistic, but works in the context of the alert name
         if self.name[0] in string.ascii_uppercase and \
-          self.name != self.name.lower() and \
-          self.name != self.name.upper() and \
-          " " not in self.name and \
-          "_" not in self.name:
+              self.name != self.name.lower() and \
+              self.name != self.name.upper() and \
+              " " not in self.name and \
+              "_" not in self.name:
             return
 
         self.warnings.append("Alert name is not in CamelCase format")
 
     def _check_structure(self):
         rule_attrs = self.rule.keys()
-        missing_attrs = [a for a in PrometheusRule.expected_attrs if a not in rule_attrs]
-
-        if missing_attrs:
+        if missing_attrs := [
+            a for a in PrometheusRule.expected_attrs if a not in rule_attrs
+        ]:
             self.errors.append(
                 f"invalid alert structure. Missing field{'s' if len(missing_attrs) > 1 else ''}"
                 f": {','.join(missing_attrs)}")
@@ -171,9 +171,7 @@ class PrometheusRule:
                     self.errors.append(f"rule is missing {rqd} annotation definition")
 
     def _check_doclink(self):
-        doclink = self.annotations.get(DOCLINK_NAME, '')
-
-        if doclink:
+        if doclink := self.annotations.get(DOCLINK_NAME, ''):
             url = urlparse(doclink)
             status, content = self.group.fetch_html_page(doclink)
             if status == 200:
@@ -192,9 +190,8 @@ class PrometheusRule:
             self.warnings.append("critical level alert is missing an SNMP oid entry")
         if oid and not re.search('^1.3.6.1.4.1.50495.1.2.\\d+.\\d+.\\d+$', oid):
             self.errors.append("invalid OID format provided")
-        if self.group.get_oids():
-            if oid and oid not in self.group.get_oids():
-                self.errors.append(f"rule defines an OID {oid} that is missing from the MIB file({os.path.basename(MIB_FILE)})")
+        if self.group.get_oids() and oid and oid not in self.group.get_oids():
+            self.errors.append(f"rule defines an OID {oid} that is missing from the MIB file({os.path.basename(MIB_FILE)})")
 
     def _check_ascii(self):
         if 'oid' not in self.labels:
@@ -203,9 +200,14 @@ class PrometheusRule:
         desc = self.annotations.get('description', '')
         summary = self.annotations.get('summary', '')
         if not isascii(desc):
-            self.errors.append(f"non-ascii characters found in 'description' field will cause issues in associated snmp trap.")
+            self.errors.append(
+                "non-ascii characters found in 'description' field will cause issues in associated snmp trap."
+            )
+
         if not isascii(summary):
-            self.errors.append(f"non-ascii characters found in 'summary' field will cause issues in associated snmp trap.")
+            self.errors.append(
+                "non-ascii characters found in 'summary' field will cause issues in associated snmp trap."
+            )
 
     def validate(self):
 
@@ -246,7 +248,7 @@ class RuleGroup:
         self.rules[alert_name] = PrometheusRule(self, rule_data)
 
     def update(self, problem_type:str, alert_name:str):
-        assert problem_type in ['error', 'warning']
+        assert problem_type in {'error', 'warning'}
 
         self.problems[problem_type].append(alert_name)
         self.rule_file.update(self.group_name)
@@ -299,10 +301,7 @@ class RuleFile:
 
     @property
     def rule_count(self):
-        rule_count = 0
-        for _group_name, rule_group in self.group.items():
-            rule_count += rule_group.count
-        return rule_count
+        return sum(rule_group.count for _group_name, rule_group in self.group.items())
 
     @property
     def oid_count(self):
@@ -322,10 +321,8 @@ class RuleFile:
         return len(self.problems)
 
     def get_max_group_name(self):
-        group_name_list = []
-        for group in self.rules.get('groups'):
-            group_name_list.append(group['name'])
-        return max([len(g) for g in group_name_list])
+        group_name_list = [group['name'] for group in self.rules.get('groups')]
+        return max(len(g) for g in group_name_list)
 
     def load_groups(self):
         sys.stdout.write("\nChecking rule groups")
@@ -341,9 +338,6 @@ class RuleFile:
                     else:
                         self.alert_names_seen.add(alert_name)
                     self.group[group_name].add_rule(rule_data)
-                else:
-                    # skipped recording rule
-                    pass
 
     def report(self):
         def max_width(item_list: Set[str], min_width: int = 0) -> int:
@@ -427,8 +421,11 @@ class UnitTests:
             print(f"\n\nError in unit tests file: {errs}")
             sys.exit(12)
 
-        missing_attr = [a for a in UnitTests.expected_attrs if a not in self.unit_test_data.keys()]
-        if missing_attr:
+        if missing_attr := [
+            a
+            for a in UnitTests.expected_attrs
+            if a not in self.unit_test_data.keys()
+        ]:
             print(f"\nMissing attributes in unit tests: {','.join(missing_attr)}")
             sys.exit(8)
 
@@ -439,8 +436,7 @@ class UnitTests:
             if not test_cases:
                 continue
             for case in test_cases:
-                alertname = case.get('alertname', '')
-                if alertname:
+                if alertname := case.get('alertname', ''):
                     alerts_tested.add(alertname)
 
         alerts_defined = set(alert_names)
@@ -494,10 +490,7 @@ class RuleChecker:
 
     @property
     def status(self):
-        if self.rule_file_problems or self.unit_tests.problems:
-            return 4
-
-        return 0
+        return 4 if self.rule_file_problems or self.unit_tests.problems else 0
 
     def mark_invalid(self):
         self.rule_file_problems = True
@@ -547,7 +540,10 @@ class RuleChecker:
         print(f"Unit Test file        : {self.test_filename}")
         print(f"\nRule groups processed : {self.rule_file.group_count:>3}")
         print(f"Rules processed       : {self.rule_file.rule_count:>3}")
-        print(f"SNMP OIDs declared    : {self.rule_file.oid_count:>3} {'(snmptranslate missing, unable to cross check)' if not self.oid_list else ''}")
+        print(
+            f"SNMP OIDs declared    : {self.rule_file.oid_count:>3} {'' if self.oid_list else '(snmptranslate missing, unable to cross check)'}"
+        )
+
         print(f"Rule errors           : {self.error_count:>3}")
         print(f"Rule warnings         : {self.warning_count:>3}")
         print(f"Rule name duplicates  : {len(self.rule_file.duplicate_alert_names):>3}")

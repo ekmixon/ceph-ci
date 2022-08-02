@@ -23,7 +23,7 @@ def task(ctx, config):
     (mon,) = ctx.cluster.only(first_mon).remotes.keys()
 
     num_osds = teuthology.num_instances_of_type(ctx.cluster, 'osd')
-    log.info('num_osds is %s' % num_osds)
+    log.info(f'num_osds is {num_osds}')
 
     manager = ceph_manager.CephManager(
         mon,

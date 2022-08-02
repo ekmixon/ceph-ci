@@ -34,10 +34,10 @@ def immutable_object_cache(ctx, config):
     finally:
         log.info("check and cleanup immutable object cache")
         for client, client_config in config.items():
-            client_config = client_config if client_config is not None else dict()
+            client_config = client_config if client_config is not None else {}
             (remote,) = ctx.cluster.only(client).remotes.keys()
             cache_path = client_config.get('immutable object cache path', '/tmp/ceph-immutable-object-cache')
-            ls_command = '"$(ls {} )"'.format(cache_path)
+            ls_command = f'"$(ls {cache_path} )"'
             remote.run(
                 args=[
                     'test', '-n', run.Raw(ls_command),
@@ -62,11 +62,7 @@ def task(ctx, config):
     assert isinstance(config, dict), \
            "task immutable_object_cache only supports a dictionary for configuration"
 
-    managers = []
     config = teuthology.replace_all_with_clients(ctx.cluster, config)
-    managers.append(
-        lambda: immutable_object_cache(ctx=ctx, config=config)
-        )
-
+    managers = [lambda: immutable_object_cache(ctx=ctx, config=config)]
     with contextutil.nested(*managers):
         yield

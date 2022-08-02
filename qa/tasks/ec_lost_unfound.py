@@ -68,7 +68,7 @@ def task(ctx, config):
     manager.mark_down_osd(0)
     manager.kill_osd(3)
     manager.mark_down_osd(3)
-    
+
     for f in range(1, 10):
         rados(ctx, mon, ['-p', pool, 'put', 'new_%d' % f, dummyfile])
         rados(ctx, mon, ['-p', pool, 'put', 'existed_%d' % f, dummyfile])
@@ -124,7 +124,7 @@ def task(ctx, config):
             log.info('listing missing/lost in %s state %s', pg['pgid'],
                      pg['state']);
             m = manager.list_pg_unfound(pg['pgid'])
-            log.info('%s' % m)
+            log.info(f'{m}')
             assert m['num_unfound'] == pg['stat_sum']['num_objects_unfound']
 
             log.info("reverting unfound in %s", pg['pgid'])

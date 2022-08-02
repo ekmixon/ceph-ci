@@ -12,7 +12,7 @@ if len(sys.argv) == 2:
     # topic arn as first argument
     topic_arn = sys.argv[1]
 else:
-    print ('Usage: ' + sys.argv[0] + ' <topic arn> [region name]')
+    print(f'Usage: {sys.argv[0]} <topic arn> [region name]')
     sys.exit(1)
 
 # endpoint and keys from vstart
@@ -27,12 +27,15 @@ string_date = strftime("%a, %d %b %Y %H:%M:%S +0000", gmtime())
 content_type = 'application/x-www-form-urlencoded; charset=utf-8'
 resource = '/'
 method = 'POST'
-string_to_sign = method + '\n\n' + content_type + '\n' + string_date + '\n' + resource 
+string_to_sign = method + '\n\n' + content_type + '\n' + string_date + '\n' + resource
 signature = base64.b64encode(hmac.new(secret_key.encode('utf-8'), string_to_sign.encode('utf-8'), hashlib.sha1).digest()).decode('ascii')
-headers = {'Authorization': 'AWS '+access_key+':'+signature,
-                   'Date': string_date,
-                   'Host': endpoint,
-                   'Content-Type': content_type}
+headers = {
+    'Authorization': f'AWS {access_key}:{signature}',
+    'Date': string_date,
+    'Host': endpoint,
+    'Content-Type': content_type,
+}
+
 http_conn = http.client.HTTPConnection(endpoint)
 http_conn.request(method, resource, body, headers)
 response = http_conn.getresponse()

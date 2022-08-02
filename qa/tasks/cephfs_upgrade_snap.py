@@ -29,16 +29,16 @@ def task(ctx, config):
         assert(fs.wait_until_scrub_complete(tag=json["scrub_tag"]) == True)
         log.info("scrub / completed")
     else:
-        log.info("scrub / failed: {}".format(json))
+        log.info(f"scrub / failed: {json}")
 
     json = fs.run_scrub(["start", "~mdsdir", "force", "recursive", "repair"])
     if not json or json['return_code'] == 0:
         assert(fs.wait_until_scrub_complete(tag=json["scrub_tag"]) == True)
         log.info("scrub ~mdsdir completed")
     else:
-        log.info("scrub / failed: {}".format(json))
+        log.info(f"scrub / failed: {json}")
 
-    for i in range(0, 10):
+    for _ in range(10):
         mds_map = fs.get_mds_map()
         if (mds_map['flags'] & (1<<1)) != 0 and (mds_map['flags'] & (1<<4)) != 0:
             break

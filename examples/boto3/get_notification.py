@@ -4,12 +4,11 @@ import boto3
 import sys
 
 if len(sys.argv) != 3:
-    print('Usage: ' + sys.argv[0] + ' <bucket> <notification>')
+    print(f'Usage: {sys.argv[0]} <bucket> <notification>')
     sys.exit(1)
 
 # bucket name as first argument
 bucketname = sys.argv[1]
-    # notification name as second argument
 notification_name = sys.argv[2]
 
 # endpoint and keys from vstart

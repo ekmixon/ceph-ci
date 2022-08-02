@@ -58,10 +58,10 @@ def task(ctx, config):
     if config is None:
         ids = misc.all_roles_of_type(ctx.cluster, 'client')
         client_roles = [f'client.{id_}' for id_ in ids]
-        config = dict([r, dict()] for r in client_roles)
+        config = dict([r, {}] for r in client_roles)
     elif isinstance(config, list):
         client_roles = config
-        config = dict([r, dict()] for r in client_roles)
+        config = dict([r, {}] for r in client_roles)
     elif isinstance(config, dict):
         client_roles = filter(lambda x: 'client.' in x, config.keys())
     else:

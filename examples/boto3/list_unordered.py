@@ -4,7 +4,7 @@ import boto3
 import sys
 
 if len(sys.argv) != 2:
-    print('Usage: ' + sys.argv[0] + ' <bucket>')
+    print(f'Usage: {sys.argv[0]} <bucket>')
     sys.exit(1)
 
 # bucket name as first argument

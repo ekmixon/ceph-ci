@@ -8,5 +8,4 @@ def promtool_available() -> bool:
 
 
 def call(cmd):
-    completion = subprocess.run(cmd.split(), stdout=subprocess.PIPE)
-    return completion
+    return subprocess.run(cmd.split(), stdout=subprocess.PIPE)

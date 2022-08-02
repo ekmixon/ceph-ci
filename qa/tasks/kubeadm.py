@@ -140,14 +140,14 @@ gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cl
                 )
             )
 
-            # fix cni config
-            for remote in ctx.cluster.remotes.keys():
-                conf = """# from https://github.com/cri-o/cri-o/blob/master/tutorials/kubernetes.md#flannel-network
+            conf = """# from https://github.com/cri-o/cri-o/blob/master/tutorials/kubernetes.md#flannel-network
 {
     "name": "crio",
     "type": "flannel"
 }
 """
+            # fix cni config
+            for remote in ctx.cluster.remotes.keys():
                 remote.write_file('/etc/cni/net.d/10-crio-flannel.conf', conf, sudo=True)
                 remote.run(args=[
                     'sudo', 'rm', '-f',
@@ -228,21 +228,6 @@ gpgkey=https://packages.cloud.google.com/yum/doc/yum-key.gpg https://packages.cl
                         wait=False
                     )
                 )
-            elif os_type == 'ubuntu' and False:
-                run.wait(
-                    ctx.cluster.run(
-                        args=[
-                            'sudo', 'rm', '-f',
-                            '/etc/apt/sources.list.d/devel:kubic:libcontainers:stable.list',
-                            f'/etc/apt/sources.list.d/devel:kubic:libcontainers:stable:cri-o:{version}.list',
-                            '/etc/apt/trusted.gpg.d/libcontainers-cri-o.gpg',
-                            run.Raw('&&'),
-                            'sudo', 'apt', 'remove', '-y',
-                            'kkubeadm', 'kubelet', 'kubectl', 'cri-o', 'cri-o-runc',
-                        ],
-                        wait=False,
-                    )
-                )
 
 
 @contextlib.contextmanager
@@ -284,12 +269,17 @@ def kubeadm_init_join(ctx, config):
             if remote == bootstrap_remote:
                 continue
             cmd = [
-                'sudo', 'kubeadm', 'join',
-                ctx.kubeadm[cluster_name].remotes[ctx.kubeadm[cluster_name].bootstrap_remote] + ':6443',
-                '--node-name', remote.shortname,
-                '--token', ctx.kubeadm[cluster_name].token,
+                'sudo',
+                'kubeadm',
+                'join',
+                f'{ctx.kubeadm[cluster_name].remotes[ctx.kubeadm[cluster_name].bootstrap_remote]}:6443',
+                '--node-name',
+                remote.shortname,
+                '--token',
+                ctx.kubeadm[cluster_name].token,
                 '--discovery-token-unsafe-skip-ca-verification',
             ]
+
             joins.append(remote.run(args=cmd, wait=False))
         run.wait(joins)
         yield
@@ -352,8 +342,7 @@ def map_vnet(mip):
         if mip in mnet:
             pos = list(mnet.hosts()).index(mip)
             log.info(f"{mip} is in {mnet} at pos {pos}")
-            sub = list(vnet.subnets(32 - mnet.prefixlen))[pos]
-            return sub
+            return list(vnet.subnets(32 - mnet.prefixlen))[pos]
     return None
 
 
@@ -534,7 +523,7 @@ def task(ctx, config):
 
     overrides = ctx.config.get('overrides', {})
     teuthology.deep_merge(config, overrides.get('kubeadm', {}))
-    log.info('Config: ' + str(config))
+    log.info(f'Config: {str(config)}')
 
     # set up cluster context
     if not hasattr(ctx, 'kubeadm'):

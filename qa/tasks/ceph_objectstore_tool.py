@@ -37,11 +37,10 @@ def cod_setup_local_data(log, ctx, NUM_OBJECTS, DATADIR,
         LOCALNAME = os.path.join(DATADIR, NAME)
 
         dataline = range(DATALINECOUNT)
-        fd = open(LOCALNAME, "w")
-        data = "This is the data for " + NAME + "\n"
-        for _ in dataline:
-            fd.write(data)
-        fd.close()
+        with open(LOCALNAME, "w") as fd:
+            data = f"This is the data for {NAME}" + "\n"
+            for _ in dataline:
+                fd.write(data)
 
 
 def cod_setup_remote_data(log, ctx, remote, NUM_OBJECTS, DATADIR,
@@ -55,10 +54,8 @@ def cod_setup_remote_data(log, ctx, remote, NUM_OBJECTS, DATADIR,
         remote.run(args=['rm', '-f', DDNAME])
 
         dataline = range(DATALINECOUNT)
-        data = "This is the data for " + NAME + "\n"
-        DATA = ""
-        for _ in dataline:
-            DATA += data
+        data = f"This is the data for {NAME}" + "\n"
+        DATA = "".join(data for _ in dataline)
         remote.write_file(DDNAME, DATA)
 
 
@@ -130,14 +127,13 @@ def cod_setup(log, ctx, remote, NUM_OBJECTS, DATADIR,
 
 
 def get_lines(filename):
-    tmpfd = open(filename, "r")
-    line = True
-    lines = []
-    while line:
-        line = tmpfd.readline().rstrip('\n')
-        if line:
-            lines += [line]
-    tmpfd.close()
+    with open(filename, "r") as tmpfd:
+        line = True
+        lines = []
+        while line:
+            line = tmpfd.readline().rstrip('\n')
+            if line:
+                lines += [line]
     os.unlink(filename)
     return lines
 

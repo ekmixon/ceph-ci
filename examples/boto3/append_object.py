@@ -9,7 +9,7 @@ def js_print(arg):
     print(json.dumps(arg, indent=2))
 
 if len(sys.argv) != 3:
-    print('Usage: ' + sys.argv[0] + ' <bucket> <key>')
+    print(f'Usage: {sys.argv[0]} <bucket> <key>')
     sys.exit(1)
 
 # bucket name as first argument

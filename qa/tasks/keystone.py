@@ -32,7 +32,7 @@ def get_toxvenv_dir(ctx):
     return ctx.tox.venv_path
 
 def toxvenv_sh(ctx, remote, args, **kwargs):
-    activate = get_toxvenv_dir(ctx) + '/bin/activate'
+    activate = f'{get_toxvenv_dir(ctx)}/bin/activate'
     return remote.sh(['source', activate, run.Raw('&&')] + args, **kwargs)
 
 def run_in_keystone_venv(ctx, client, args):
@@ -43,8 +43,8 @@ def run_in_keystone_venv(ctx, client, args):
                         ] + args)
 
 def get_keystone_venved_cmd(ctx, cmd, args):
-    kbindir = get_keystone_dir(ctx) + '/.tox/venv/bin/'
-    return [ kbindir + 'python', kbindir + cmd ] + args
+    kbindir = f'{get_keystone_dir(ctx)}/.tox/venv/bin/'
+    return [f'{kbindir}python', kbindir + cmd] + args
 
 @contextlib.contextmanager
 def download(ctx, config):
@@ -128,9 +128,18 @@ def install_packages(ctx, config):
         toxvenv_sh(ctx, remote, ['python'], stdin=patch_bindep)
         # use bindep to read which dependencies we need from keystone/bindep.txt
         toxvenv_sh(ctx, remote, ['pip', 'install', 'bindep'])
-        packages[client] = toxvenv_sh(ctx, remote,
-                ['bindep', '--brief', '--file', '{}/bindep.txt'.format(get_keystone_dir(ctx))],
-                check_status=False).splitlines() # returns 1 on success?
+        packages[client] = toxvenv_sh(
+            ctx,
+            remote,
+            [
+                'bindep',
+                '--brief',
+                '--file',
+                f'{get_keystone_dir(ctx)}/bindep.txt',
+            ],
+            check_status=False,
+        ).splitlines()
+
         for dep in packages[client]:
             install_package(dep, remote)
     try:
@@ -197,17 +206,29 @@ def configure_instance(ctx, config):
             ])
         # log to a file that gets archived
         log_file = '{p}/archive/keystone.{c}.log'.format(p=teuthology.get_testdir(ctx), c=client)
-        run_in_keystone_dir(ctx, client,
+        run_in_keystone_dir(
+            ctx,
+            client,
             [
                 'sed',
-                '-e', 's^#log_file =.*^log_file = {}^'.format(log_file),
-                '-i', 'etc/keystone.conf'
-            ])
+                '-e',
+                f's^#log_file =.*^log_file = {log_file}^',
+                '-i',
+                'etc/keystone.conf',
+            ],
+        )
+
         # copy the config to archive
-        run_in_keystone_dir(ctx, client, [
-                'cp', 'etc/keystone.conf',
-                '{}/archive/keystone.{}.conf'.format(teuthology.get_testdir(ctx), client)
-            ])
+        run_in_keystone_dir(
+            ctx,
+            client,
+            [
+                'cp',
+                'etc/keystone.conf',
+                f'{teuthology.get_testdir(ctx)}/archive/keystone.{client}.conf',
+            ],
+        )
+
 
         # prepare key repository for Fetnet token authenticator
         run_in_keystone_dir(ctx, client, [ 'mkdir', '-p', keyrepo_dir ])
@@ -298,8 +319,7 @@ def dict_to_args(specials, items):
         if k in special_vals:
             special_vals[k] = v
         else:
-            args.append('--{k}'.format(k=k))
-            args.append(v)
+            args.extend(('--{k}'.format(k=k), v))
     args.extend(arg for arg in special_vals.values() if arg)
     return args
 
@@ -352,8 +372,10 @@ def fill_keystone(ctx, config):
                 'internal-url': url,
                 'admin-url': admin_url,
                 'public-url': url}
-        bootstrap_args = chain.from_iterable(('--bootstrap-{}'.format(k), v)
-                                             for k, v in opts.items())
+        bootstrap_args = chain.from_iterable(
+            (f'--bootstrap-{k}', v) for k, v in opts.items()
+        )
+
         run_in_keystone_venv(ctx, cclient,
                              ['keystone-manage', 'bootstrap'] +
                              list(bootstrap_args))

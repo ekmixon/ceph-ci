@@ -20,7 +20,7 @@ def get_keycloak_version(config):
 
 def get_keycloak_dir(ctx, config):
     keycloak_version = get_keycloak_version(config)
-    current_version = 'keycloak-'+keycloak_version
+    current_version = f'keycloak-{keycloak_version}'
     return '{tdir}/{ver}'.format(tdir=teuthology.get_testdir(ctx),ver=current_version)
 
 def run_in_keycloak_dir(ctx, client, config, args, **kwargs):
@@ -33,7 +33,7 @@ def get_toxvenv_dir(ctx):
     return ctx.tox.venv_path
 
 def toxvenv_sh(ctx, remote, args, **kwargs):
-    activate = get_toxvenv_dir(ctx) + '/bin/activate'
+    activate = f'{get_toxvenv_dir(ctx)}/bin/activate'
     return remote.sh(['source', activate, run.Raw('&&')] + args, **kwargs)
 
 @contextlib.contextmanager
@@ -50,16 +50,18 @@ def install_packages(ctx, config):
         (remote,) = ctx.cluster.only(client).remotes.keys()
         test_dir=teuthology.get_testdir(ctx)
         current_version = get_keycloak_version(config)
-        link1 = 'https://downloads.jboss.org/keycloak/'+current_version+'/keycloak-'+current_version+'.tar.gz'
+        link1 = f'https://downloads.jboss.org/keycloak/{current_version}/keycloak-{current_version}.tar.gz'
+
         toxvenv_sh(ctx, remote, ['wget', link1])
-        
-        file1 = 'keycloak-'+current_version+'.tar.gz'
+
+        file1 = f'keycloak-{current_version}.tar.gz'
         toxvenv_sh(ctx, remote, ['tar', '-C', test_dir, '-xvzf', file1])
 
-        link2 ='https://downloads.jboss.org/keycloak/'+current_version+'/adapters/keycloak-oidc/keycloak-wildfly-adapter-dist-'+current_version+'.tar.gz' 
+        link2 = f'https://downloads.jboss.org/keycloak/{current_version}/adapters/keycloak-oidc/keycloak-wildfly-adapter-dist-{current_version}.tar.gz'
+
         toxvenv_sh(ctx, remote, ['cd', '{tdir}'.format(tdir=get_keycloak_dir(ctx,config)), run.Raw('&&'), 'wget', link2])
-        
-        file2 = 'keycloak-wildfly-adapter-dist-'+current_version+'.tar.gz'
+
+        file2 = f'keycloak-wildfly-adapter-dist-{current_version}.tar.gz'
         toxvenv_sh(ctx, remote, ['tar', '-C', '{tdir}'.format(tdir=get_keycloak_dir(ctx,config)), '-xvzf', '{tdr}/{file}'.format(tdr=get_keycloak_dir(ctx,config),file=file2)])
 
     try:
@@ -69,8 +71,16 @@ def install_packages(ctx, config):
         for client in config:
             current_version = get_keycloak_version(config)
             ctx.cluster.only(client).run(
-                args=['cd', '{tdir}'.format(tdir=get_keycloak_dir(ctx,config)), run.Raw('&&'), 'rm', '-rf', 'keycloak-wildfly-adapter-dist-' + current_version + '.tar.gz'],
+                args=[
+                    'cd',
+                    '{tdir}'.format(tdir=get_keycloak_dir(ctx, config)),
+                    run.Raw('&&'),
+                    'rm',
+                    '-rf',
+                    f'keycloak-wildfly-adapter-dist-{current_version}.tar.gz',
+                ]
             )
+
 
             ctx.cluster.only(client).run(
                 args=['rm', '-rf', '{tdir}'.format(tdir=get_keycloak_dir(ctx,config))],

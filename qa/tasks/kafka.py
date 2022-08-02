@@ -19,7 +19,7 @@ def get_kafka_version(config):
 
 def get_kafka_dir(ctx, config):
     kafka_version = get_kafka_version(config)
-    current_version = 'kafka-' + kafka_version + '-src'
+    current_version = f'kafka-{kafka_version}-src'
     return '{tdir}/{ver}'.format(tdir=teuthology.get_testdir(ctx),ver=current_version)
 
 
@@ -36,12 +36,13 @@ def install_kafka(ctx, config):
         test_dir=teuthology.get_testdir(ctx)
         current_version = get_kafka_version(config)
 
-        link1 = 'https://archive.apache.org/dist/kafka/' + current_version + '/kafka-' + current_version + '-src.tgz'
+        link1 = f'https://archive.apache.org/dist/kafka/{current_version}/kafka-{current_version}-src.tgz'
+
         ctx.cluster.only(client).run(
             args=['cd', '{tdir}'.format(tdir=test_dir), run.Raw('&&'), 'wget', link1],
         )
 
-        file1 = 'kafka-' + current_version + '-src.tgz'
+        file1 = f'kafka-{current_version}-src.tgz'
         ctx.cluster.only(client).run(
             args=['cd', '{tdir}'.format(tdir=test_dir), run.Raw('&&'), 'tar', '-xvzf', file1],
         )
@@ -61,7 +62,7 @@ def install_kafka(ctx, config):
                 args=['rm', '-rf', test_dir],
             )
 
-            rmfile1 = 'kafka-' + current_version + '-src.tgz'
+            rmfile1 = f'kafka-{current_version}-src.tgz'
             ctx.cluster.only(client).run(
                 args=['rm', '-rf', '{tdir}/{doc}'.format(tdir=teuthology.get_testdir(ctx),doc=rmfile1)],
             )

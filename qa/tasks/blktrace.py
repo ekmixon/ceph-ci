@@ -21,7 +21,7 @@ def setup(ctx, config):
     log_dir = '{tdir}/archive/performance/blktrace'.format(tdir=teuthology.get_testdir(ctx))
 
     for remote, roles_for_host in osds.remotes.items():
-        log.info('Creating %s on %s' % (log_dir, remote.name))
+        log.info(f'Creating {log_dir} on {remote.name}')
         remote.run(
             args=['mkdir', '-p', '-m0755', '--', log_dir],
             wait=False,
@@ -44,7 +44,7 @@ def execute(ctx, config):
                                                      config['cluster']):
             if roles_to_devs.get(role):
                 dev = roles_to_devs[role]
-                log.info("running blktrace on %s: %s" % (remote.name, dev))
+                log.info(f"running blktrace on {remote.name}: {dev}")
 
                 proc = remote.run(
                     args=[

@@ -22,10 +22,7 @@ class DecoratingLoader(loader.TestLoader):
 
     def _apply_params(self, obj):
         for k, v in self._params.items():
-            if obj.__class__ is type:
-                cls = obj
-            else:
-                cls = obj.__class__
+            cls = obj if obj.__class__ is type else obj.__class__
             setattr(cls, k, v)
 
     def loadTestsFromTestCase(self, testCaseClass):
@@ -160,10 +157,11 @@ def task(ctx, config):
 
     # Depending on config, either load specific modules, or scan for moduless
     if config and 'modules' in config and config['modules']:
-        module_suites = []
-        for mod_name in config['modules']:
-            # Test names like cephfs.test_auto_repair
-            module_suites.append(decorating_loader.loadTestsFromName(mod_name))
+        module_suites = [
+            decorating_loader.loadTestsFromName(mod_name)
+            for mod_name in config['modules']
+        ]
+
         overall_suite = suite.TestSuite(module_suites)
     else:
         # Default, run all tests
@@ -202,12 +200,8 @@ def task(ctx, config):
     if not result.wasSuccessful():
         result.printErrors()  # duplicate output at end for convenience
 
-        bad_tests = []
-        for test, error in result.errors:
-            bad_tests.append(str(test))
-        for test, failure in result.failures:
-            bad_tests.append(str(test))
-
+        bad_tests = [str(test) for test, error in result.errors]
+        bad_tests.extend(str(test) for test, failure in result.failures)
         raise RuntimeError("Test failure: {0}".format(", ".join(bad_tests)))
 
     yield

@@ -97,7 +97,7 @@ class DaemonWatchdog(Greenlet):
             daemon_failures.extend(filter(lambda daemon: daemon.running() and daemon.proc.finished, mgrs))
 
             for daemon in daemon_failures:
-                name = daemon.role + '.' + daemon.id_
+                name = f'{daemon.role}.{daemon.id_}'
                 dt = daemon_failure_time.setdefault(name, (daemon, now))
                 assert dt[0] is daemon
                 delta = now-dt[1]
@@ -110,7 +110,7 @@ class DaemonWatchdog(Greenlet):
 
             # If a daemon is no longer failed, remove it from tracking:
             for name in list(daemon_failure_time.keys()):
-                if name not in [d.role + '.' + d.id_ for d in daemon_failures]:
+                if name not in [f'{d.role}.{d.id_}' for d in daemon_failures]:
                     self.log("daemon {name} has been restored".format(name=name))
                     del daemon_failure_time[name]
 

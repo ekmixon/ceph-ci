@@ -37,9 +37,10 @@ def download_ceph_deploy(ctx, config):
     else:
         supported_versions = ['2', '3']
         if py_ver not in supported_versions:
-            raise ValueError("python_version must be: {}, not {}".format(
-                ' or '.join(supported_versions), py_ver
-            ))
+            raise ValueError(
+                f"python_version must be: {' or '.join(supported_versions)}, not {py_ver}"
+            )
+
 
         log.info("Installing Python")
         system_type = teuthology.get_system_type(ceph_admin)
@@ -63,21 +64,23 @@ def download_ceph_deploy(ctx, config):
 
     ceph_admin.run(
         args=[
-            'git', 'clone', '-b', ceph_deploy_branch,
-            teuth_config.ceph_git_base_url + 'ceph-deploy.git',
+            'git',
+            'clone',
+            '-b',
+            ceph_deploy_branch,
+            f'{teuth_config.ceph_git_base_url}ceph-deploy.git',
             '{tdir}/ceph-deploy'.format(tdir=testdir),
-        ],
+        ]
     )
+
     args = [
         'cd',
         '{tdir}/ceph-deploy'.format(tdir=testdir),
         run.Raw('&&'),
         './bootstrap',
     ]
-    try:
+    with contextlib.suppress(KeyError):
         args.append(str(config['python_version']))
-    except KeyError:
-        pass
     ceph_admin.run(args=args)
 
     try:
@@ -143,7 +146,7 @@ def get_nodes_using_role(ctx, target_role):
 
     # Prepare a modified version of cluster.remotes with ceph-deploy-ized names
     modified_remotes = {}
-    ceph_deploy_mapped = dict()
+    ceph_deploy_mapped = {}
     for _remote, roles_for_host in ctx.cluster.remotes.items():
         modified_remotes[_remote] = []
         for svc_id in roles_for_host:
@@ -187,14 +190,16 @@ def get_dev_for_osd(ctx, config):
         if config.get('separate_journal_disk') is not None:
             num_devs_reqd = 2 * num_osds
             assert num_devs_reqd <= len(
-                devs), 'fewer data and journal disks than required ' + shortname
+                devs
+            ), f'fewer data and journal disks than required {shortname}'
+
             for dindex in range(0, num_devs_reqd, 2):
                 jd_index = dindex + 1
                 dev_short = devs[dindex].split('/')[-1]
                 jdev_short = devs[jd_index].split('/')[-1]
                 osd_devs.append((shortname, dev_short, jdev_short))
         else:
-            assert num_osds <= len(devs), 'fewer disks than osds ' + shortname
+            assert num_osds <= len(devs), f'fewer disks than osds {shortname}'
             for dev in devs[:num_osds]:
                 dev_short = dev.split('/')[-1]
                 osd_devs.append((shortname, dev_short))

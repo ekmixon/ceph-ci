@@ -66,7 +66,7 @@ def task(ctx, config):
 
     manager.kill_osd(0)
     manager.mark_down_osd(0)
-    
+
     for f in range(1, 10):
         rados(ctx, mon, ['-p', POOL, 'put', 'new_%d' % f, dummyfile])
         rados(ctx, mon, ['-p', POOL, 'put', 'existed_%d' % f, dummyfile])
@@ -74,7 +74,7 @@ def task(ctx, config):
 
     # bring osd.0 back up, let it peer, but don't replicate the new
     # objects...
-    log.info('osd.0 command_args is %s' % 'foo')
+    log.info('osd.0 command_args is foo')
     log.info(ctx.daemons.get_daemon('osd', 0).command_args)
     ctx.daemons.get_daemon('osd', 0).command_kwargs['args'].extend([
             '--osd-recovery-delay-start', '1000'
@@ -145,10 +145,7 @@ def task(ctx, config):
             assert m['available_might_have_unfound'] == True
             assert m['might_have_unfound'][0]['osd'] == "1"
             assert m['might_have_unfound'][0]['status'] == "osd is down"
-            num_unfound=0
-            for o in m['objects']:
-                if len(o['locations']) == 0:
-                    num_unfound += 1
+            num_unfound = sum(len(o['locations']) == 0 for o in m['objects'])
             assert m['num_unfound'] == num_unfound
 
             log.info("reverting unfound in %s on %s", pg['pgid'], primary)

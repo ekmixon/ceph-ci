@@ -26,12 +26,12 @@ def thrashes_immutable_object_cache_daemon(ctx, config):
     # just thrash one rbd client.
     client, client_config = list(config.items())[0]
     (remote,) = ctx.cluster.only(client).remotes.keys()
-    client_config = client_config if client_config is not None else dict()
+    client_config = client_config if client_config is not None else {}
     kill_daemon_time = client_config.get('kill_daemon_time', DEFAULT_KILL_DAEMON_TIME)
     dead_time = client_config.get('dead_time', DEFAULT_DEAD_TIME)
     live_time = client_config.get('live_time', DEFAULT_LIVE_TIME)
 
-    for i in range(kill_daemon_time):
+    for _ in range(kill_daemon_time):
         log.info("ceph-immutable-object-cache crash....")
         remote.run(
             args=[
@@ -69,11 +69,10 @@ def task(ctx, config):
     assert isinstance(config, dict), \
             "task immutable_object_cache_thrash only supports a dictionary for configuration"
 
-    managers = []
     config = teuthology.replace_all_with_clients(ctx.cluster, config)
-    managers.append(
+    managers = [
         lambda: thrashes_immutable_object_cache_daemon(ctx=ctx, config=config)
-        )
+    ]
 
     with contextutil.nested(*managers):
         yield

@@ -47,7 +47,7 @@ def task(ctx, config):
         if e.exitstatus == 1:
             log.info("MDS creation killed as expected")
         else:
-            log.error("Unexpected status code %s" % e.exitstatus)
+            log.error(f"Unexpected status code {e.exitstatus}")
             raise
 
     # Since I have intentionally caused a crash, I will clean up the resulting core

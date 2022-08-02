@@ -109,7 +109,7 @@ def task(ctx, config):
 
     # write 1 non-divergent object (ensure that old divergent one is divergent)
     objname = "existing_%d" % (DIVERGENT_WRITE + DIVERGENT_REMOVE)
-    log.info('writing non-divergent object ' + objname)
+    log.info(f'writing non-divergent object {objname}')
     rados(ctx, mon, ['-p', 'foo', 'put', objname, dummyfile2])
 
     manager.wait_for_recovery()

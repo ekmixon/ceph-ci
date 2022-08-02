@@ -36,9 +36,7 @@ log = logging.getLogger(__name__)
 
 # this is for cephadm clusters
 def shell(ctx, cluster_name, remote, args, name=None, **kwargs):
-    extra_args = []
-    if name:
-        extra_args = ['-n', name]
+    extra_args = ['-n', name] if name else []
     return remote.run(
         args=[
             'sudo',
@@ -238,7 +236,7 @@ class OSDThrasher(Thrasher):
         self.max_pgs = self.config.get("max_pgs_per_pool_osd", 1200) * len(num_osds)
         self.min_pgs = self.config.get("min_pgs_per_pool_osd", 1) * len(num_osds)
         if self.config is None:
-            self.config = dict()
+            self.config = {}
         # prevent monitor from auto-marking things out while thrasher runs
         # try both old and new tell syntax, in case we are testing old code
         self.saved_options = []
@@ -267,7 +265,7 @@ class OSDThrasher(Thrasher):
                          "not available on all OSD nodes")
         else:
             self.ceph_objectstore_tool = \
-                self.config.get('ceph_objectstore_tool', True)
+                    self.config.get('ceph_objectstore_tool', True)
         # spawn do_thrash
         self.thread = gevent.spawn(self.do_thrash)
         if self.sighup_delay:

@@ -13,7 +13,7 @@ elif len(sys.argv) == 2:
     bucketname = sys.argv[1]
     notification_name = ""
 else:
-    print('Usage: ' + sys.argv[0] + ' <bucket> [notification]')
+    print(f'Usage: {sys.argv[0]} <bucket> [notification]')
     sys.exit(1)
 
 # endpoint and keys from vstart

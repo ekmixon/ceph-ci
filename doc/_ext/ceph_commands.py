@@ -94,18 +94,18 @@ class CmdParam(object):
         self.goodchars = goodchars
         self.positional = positional != 'false'
 
-        assert who == None
+        assert who is None
 
     def help(self):
         advanced = []
         if self.type != 'CephString':
-            advanced.append(self.type + ' ')
+            advanced.append(f'{self.type} ')
         if self.range:
-            advanced.append('range= ``{}`` '.format('..'.join(self.range)))
+            advanced.append(f"range= ``{'..'.join(self.range)}`` ")
         if self.strings:
-            advanced.append('strings=({}) '.format(' '.join(self.strings)))
+            advanced.append(f"strings=({' '.join(self.strings)}) ")
         if self.goodchars:
-            advanced.append('goodchars= ``{}`` '.format(self.goodchars))
+            advanced.append(f'goodchars= ``{self.goodchars}`` ')
         if self.n:
             advanced.append('(can be repeated)')
 
@@ -115,24 +115,21 @@ class CmdParam(object):
     def mk_example_value(self):
         if self.type == 'CephChoices' and self.strings:
             return self.strings[0]
-        if self.range:
-            return self.range[0]
-        return CmdParam.bash_example[self.type]
+        return self.range[0] if self.range else CmdParam.bash_example[self.type]
 
     def mk_bash_example(self, simple):
         val = self.mk_example_value()
 
         if self.type == 'CephBool':
-            return '--' + self.name
-        if simple:
-            if self.type == "CephChoices" and self.strings:
-                return val
-            elif self.type == "CephString" and self.name != 'who':
-                return 'my_' + self.name
-            else:
-                return CmdParam.bash_example[self.type]
+            return f'--{self.name}'
+        if not simple:
+            return f'--{self.name}={val}'
+        if self.type == "CephChoices" and self.strings:
+            return val
+        elif self.type == "CephString" and self.name != 'who':
+            return f'my_{self.name}'
         else:
-            return '--{}={}'.format(self.name, val)
+            return CmdParam.bash_example[self.type]
 
 
 class CmdCommand(object):
@@ -148,16 +145,14 @@ class CmdCommand(object):
         self.needs_overload = False
 
     def is_reasonably_simple(self):
-        if len(self.params) > 3:
-            return False
-        if any(p.n for p in self.params):
-            return False
-        return True
+        return False if len(self.params) > 3 else not any(p.n for p in self.params)
 
     def mk_bash_example(self):
         simple = self.is_reasonably_simple()
-        line = ' '.join(['ceph', self.prefix] + [p.mk_bash_example(simple) for p in self.params])
-        return line
+        return ' '.join(
+            ['ceph', self.prefix]
+            + [p.mk_bash_example(simple) for p in self.params]
+        )
 
 
 class Sig:
@@ -260,9 +255,11 @@ class CephMgrCommands(Directive):
     def _is_mgr_module(self, dirname, name):
         if not os.path.isdir(os.path.join(dirname, name)):
             return False
-        if not os.path.isfile(os.path.join(dirname, name, '__init__.py')):
-            return False
-        return name not in ['tests']
+        return (
+            name not in ['tests']
+            if os.path.isfile(os.path.join(dirname, name, '__init__.py'))
+            else False
+        )
 
     @contextlib.contextmanager
     def mocked_modules(self):
@@ -352,7 +349,7 @@ class CephMgrCommands(Directive):
         os.environ['UNITTEST'] = 'true'
         modules = [name for name in os.listdir(module_path)
                    if self._is_mgr_module(module_path, name)]
-        commands = sum([self._collect_module_commands(name) for name in modules], [])
+        commands = sum((self._collect_module_commands(name) for name in modules), [])
         cmds = [CmdCommand(**self._normalize_command(c)) for c in commands]
         cmds = [cmd for cmd in cmds if 'hidden' not in cmd.flags]
         cmds = sorted(cmds, key=lambda cmd: cmd.prefix)

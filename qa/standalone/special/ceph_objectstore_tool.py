@@ -64,7 +64,7 @@ def get_objs(ALLPGS, prefix, DIR, ID):
         DIRL2 = os.path.join(DIR, d)
         SUBDIR = os.path.join(DIRL2, "current")
         for p in ALLPGS:
-            PGDIR = p + "_head"
+            PGDIR = f"{p}_head"
             if not os.path.isdir(os.path.join(SUBDIR, PGDIR)):
                 continue
             FINALDIR = os.path.join(SUBDIR, PGDIR)
@@ -81,7 +81,7 @@ def get_osds(PG, DIR):
     for d in ALLOSDS:
         DIRL2 = os.path.join(DIR, d)
         SUBDIR = os.path.join(DIRL2, "current")
-        PGDIR = PG + "_head"
+        PGDIR = f"{PG}_head"
         if not os.path.isdir(os.path.join(SUBDIR, PGDIR)):
             continue
         OSDS += [d]
@@ -89,14 +89,13 @@ def get_osds(PG, DIR):
 
 
 def get_lines(filename):
-    tmpfd = open(filename, "r")
-    line = True
-    lines = []
-    while line:
-        line = tmpfd.readline().rstrip('\n')
-        if line:
-            lines += [line]
-    tmpfd.close()
+    with open(filename, "r") as tmpfd:
+        line = True
+        lines = []
+        while line:
+            line = tmpfd.readline().rstrip('\n')
+            if line:
+                lines += [line]
     os.unlink(filename)
     return lines
 
@@ -104,19 +103,19 @@ def get_lines(filename):
 def cat_file(level, filename):
     if level < logging.getLogger().getEffectiveLevel():
         return
-    print("File: " + filename)
+    print(f"File: {filename}")
     with open(filename, "r") as f:
         while True:
-            line = f.readline().rstrip('\n')
-            if not line:
+            if line := f.readline().rstrip('\n'):
+                print(line)
+            else:
                 break
-            print(line)
     print("<EOF>")
 
 
 def vstart(new, opt="-o osd_pool_default_pg_autoscale_mode=off"):
     print("vstarting....", end="")
-    NEW = new and "-n" or "-k"
+    NEW = "-n" if new else "-k"
     call("MON=1 OSD=4 MDS=0 MGR=1 CEPH_PORT=7400 MGR_PYTHON_PATH={path}/src/pybind/mgr {path}/src/vstart.sh --filestore --short -l {new} -d {opt} > /dev/null 2>&1".format(new=NEW, opt=opt, path=CEPH_ROOT), shell=True)
     print("DONE")
 
@@ -127,18 +126,16 @@ def test_failure(cmd, errmsg, tty=False):
             ttyfd = open("/dev/tty", "rwb")
         except Exception as e:
             logging.info(str(e))
-            logging.info("SKIP " + cmd)
+            logging.info(f"SKIP {cmd}")
             return 0
     TMPFILE = r"/tmp/tmp.{pid}".format(pid=os.getpid())
-    tmpfd = open(TMPFILE, "wb")
-
-    logging.debug(cmd)
-    if tty:
-        ret = call(cmd, shell=True, stdin=ttyfd, stdout=ttyfd, stderr=tmpfd)
-        ttyfd.close()
-    else:
-        ret = call(cmd, shell=True, stderr=tmpfd)
-    tmpfd.close()
+    with open(TMPFILE, "wb") as tmpfd:
+        logging.debug(cmd)
+        if tty:
+            ret = call(cmd, shell=True, stdin=ttyfd, stdout=ttyfd, stderr=tmpfd)
+            ttyfd.close()
+        else:
+            ret = call(cmd, shell=True, stderr=tmpfd)
     if ret == 0:
         logging.error(cmd)
         logging.error("Should have failed, but got exit 0")
@@ -149,16 +146,14 @@ def test_failure(cmd, errmsg, tty=False):
         logging.info("Correctly failed with message \"" + matched[0] + "\"")
         return 0
     else:
-        logging.error("Command: " + cmd )
+        logging.error(f"Command: {cmd}")
         logging.error("Bad messages to stderr \"" + str(lines) + "\"")
         logging.error("Expected \"" + errmsg + "\"")
         return 1
 
 
 def get_nspace(num):
-    if num == 0:
-        return ""
-    return "ns{num}".format(num=num)
+    return "" if num == 0 else "ns{num}".format(num=num)
 
 
 def verify(DATADIR, POOL, NAME_PREFIX, db):
@@ -208,11 +203,8 @@ def verify(DATADIR, POOL, NAME_PREFIX, db):
             ERRORS += 1
         else:
             getlines = get_lines(TMPFILE)
-            assert(len(getlines) == 0 or len(getlines) == 1)
-            if len(getlines) == 0:
-                gethdr = ""
-            else:
-                gethdr = getlines[0]
+            assert len(getlines) in {0, 1}
+            gethdr = "" if len(getlines) == 0 else getlines[0]
             logging.debug("header: {hdr}".format(hdr=gethdr))
             if gethdr != hdr:
                 logging.error("getomapheader returned wrong val: {get} instead of {orig}".format(get=gethdr, orig=hdr))
@@ -325,18 +317,16 @@ def test_dump_journal(CFSD_PREFIX, osds):
 
     for osd in osds:
         # Test --op dump-journal by loading json
-        cmd = (CFSD_PREFIX + "--op dump-journal --format json").format(osd=osd)
+        cmd = f"{CFSD_PREFIX}--op dump-journal --format json".format(osd=osd)
         logging.debug(cmd)
-        tmpfd = open(TMPFILE, "wb")
-        ret = call(cmd, shell=True, stdout=tmpfd)
-        if ret != 0:
-            logging.error("Bad exit status {ret} from {cmd}".format(ret=ret, cmd=cmd))
-            ERRORS += 1
-            continue
-        tmpfd.close()
-        tmpfd = open(TMPFILE, "r")
-        jsondict = json.load(tmpfd)
-        tmpfd.close()
+        with open(TMPFILE, "wb") as tmpfd:
+            ret = call(cmd, shell=True, stdout=tmpfd)
+            if ret != 0:
+                logging.error("Bad exit status {ret} from {cmd}".format(ret=ret, cmd=cmd))
+                ERRORS += 1
+                continue
+        with open(TMPFILE, "r") as tmpfd:
+            jsondict = json.load(tmpfd)
         os.unlink(TMPFILE)
 
         journal_errors = check_journal(jsondict)
@@ -383,14 +373,12 @@ def check_data(DATADIR, TMPFILE, OSDDIR, SPLIT_NAME):
         if clone != "head":
             continue
         path = os.path.join(DATADIR, rawnsfile)
-        tmpfd = open(TMPFILE, "wb")
-        cmd = "find {dir} -name '{file}_*_{nspace}_*'".format(dir=OSDDIR, file=file, nspace=nspace)
-        logging.debug(cmd)
-        ret = call(cmd, shell=True, stdout=tmpfd)
-        if ret:
-            logging.critical("INTERNAL ERROR")
-            return 1
-        tmpfd.close()
+        with open(TMPFILE, "wb") as tmpfd:
+            cmd = "find {dir} -name '{file}_*_{nspace}_*'".format(dir=OSDDIR, file=file, nspace=nspace)
+            logging.debug(cmd)
+            if ret := call(cmd, shell=True, stdout=tmpfd):
+                logging.critical("INTERNAL ERROR")
+                return 1
         obj_locs = get_lines(TMPFILE)
         if len(obj_locs) == 0:
             logging.error("Can't find imported object {name}".format(name=file))
@@ -486,7 +474,7 @@ def get_osd_weights(CFSD_PREFIX, osd_ids, osd_path):
         linev = re.split('\s+', line)
         if linev[0] == '':
             linev.pop(0)
-        print('linev %s' % linev)
+        print(f'linev {linev}')
         weights.append(float(linev[2]))
 
     return weights
@@ -526,26 +514,35 @@ def test_get_set_inc_osdmap(CFSD_PREFIX, osd_path):
     cmd = (CFSD_PREFIX + "--op get-inc-osdmap --file {file}").format(osd=osd_path,
                                                                      file=file_e2.name)
     output = check_output(cmd, shell=True).decode()
-    epoch = int(re.findall('#(\d+)', output)[0])
-    # backup e1 incremental before overwriting it
-    epoch -= 1
+    epoch = int(re.findall('#(\d+)', output)[0]) - 1
     file_e1_backup = tempfile.NamedTemporaryFile(delete=True)
     cmd = CFSD_PREFIX + "--op get-inc-osdmap --epoch {epoch} --file {file}"
-    ret = call(cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name), shell=True)
-    if ret: return 1
+    if ret := call(
+        cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name),
+        shell=True,
+    ):
+        return 1
     # overwrite e1 with e2
     cmd = CFSD_PREFIX + "--op set-inc-osdmap --force --epoch {epoch} --file {file}"
-    ret = call(cmd.format(osd=osd_path, epoch=epoch, file=file_e2.name), shell=True)
-    if ret: return 1
+    if ret := call(
+        cmd.format(osd=osd_path, epoch=epoch, file=file_e2.name), shell=True
+    ):
+        return 1
     # Use dry-run to set back to e1 which shouldn't happen
     cmd = CFSD_PREFIX + "--op set-inc-osdmap --dry-run --epoch {epoch} --file {file}"
-    ret = call(cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name), shell=True)
-    if ret: return 1
+    if ret := call(
+        cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name),
+        shell=True,
+    ):
+        return 1
     # read from e1
     file_e1_read = tempfile.NamedTemporaryFile(delete=True)
     cmd = CFSD_PREFIX + "--op get-inc-osdmap --epoch {epoch} --file {file}"
-    ret = call(cmd.format(osd=osd_path, epoch=epoch, file=file_e1_read.name), shell=True)
-    if ret: return 1
+    if ret := call(
+        cmd.format(osd=osd_path, epoch=epoch, file=file_e1_read.name),
+        shell=True,
+    ):
+        return 1
     errors = 0
     try:
         if not filecmp.cmp(file_e2.name, file_e1_read.name, shallow=False):
@@ -554,8 +551,10 @@ def test_get_set_inc_osdmap(CFSD_PREFIX, osd_path):
     finally:
         # revert the change with file_e1_backup
         cmd = CFSD_PREFIX + "--op set-inc-osdmap --epoch {epoch} --file {file}"
-        ret = call(cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name), shell=True)
-        if ret:
+        if ret := call(
+            cmd.format(osd=osd_path, epoch=epoch, file=file_e1_backup.name),
+            shell=True,
+        ):
             logging.error("Failed to revert the changed inc-osdmap")
             errors += 1
 
@@ -626,14 +625,13 @@ def test_removeall(CFSD_PREFIX, db, OBJREPPGS, REP_POOL, CEPH_BIN, OSDDIR, REP_N
                         logging.error("removeall failed for {json}".format(json=JSON))
                         errors += 1
 
-                    tmpfd = open(TMPFILE, "w")
-                    cmd = (CFSD_PREFIX + "--op list --pgid {pg} --namespace {ns} {name}").format(osd=osd, pg=pg, ns=nspace, name=basename)
-                    logging.debug(cmd)
-                    ret = call(cmd, shell=True, stdout=tmpfd)
-                    if ret != 0:
-                        logging.error("Bad exit status {ret} from {cmd}".format(ret=ret, cmd=cmd))
-                        errors += 1
-                    tmpfd.close()
+                    with open(TMPFILE, "w") as tmpfd:
+                        cmd = (CFSD_PREFIX + "--op list --pgid {pg} --namespace {ns} {name}").format(osd=osd, pg=pg, ns=nspace, name=basename)
+                        logging.debug(cmd)
+                        ret = call(cmd, shell=True, stdout=tmpfd)
+                        if ret != 0:
+                            logging.error("Bad exit status {ret} from {cmd}".format(ret=ret, cmd=cmd))
+                            errors += 1
                     lines = get_lines(TMPFILE)
                     if len(lines) != 0:
                         logging.error("Removeall didn't remove all objects {ns}/{name} : {lines}".format(ns=nspace, name=basename, lines=lines))

@@ -99,18 +99,24 @@ def task(ctx, config):
         for client, tests in clients.items():
             (remote,) = (ctx.cluster.only(client).remotes.keys())
             client_dir = '{tdir}/archive/cram.{role}'.format(tdir=testdir, role=client)
-            test_files = set([test.rsplit('/', 1)[1] for test in tests])
+            test_files = {test.rsplit('/', 1)[1] for test in tests}
 
             # remove test files unless they failed
             for test_file in test_files:
                 abs_file = os.path.join(client_dir, test_file)
                 remote.run(
                     args=[
-                        'test', '-f', abs_file + '.err',
+                        'test',
+                        '-f',
+                        f'{abs_file}.err',
                         run.Raw('||'),
-                        'rm', '-f', '--', abs_file,
-                        ],
-                    )
+                        'rm',
+                        '-f',
+                        '--',
+                        abs_file,
+                    ]
+                )
+
 
             # ignore failure since more than one client may
             # be run on a host, and the client dir should be
@@ -135,10 +141,7 @@ def _run_tests(ctx, role):
     """
     assert isinstance(role, str)
     PREFIX = 'client.'
-    if role.startswith(PREFIX):
-        id_ = role[len(PREFIX):]
-    else:
-        id_ = role
+    id_ = role[len(PREFIX):] if role.startswith(PREFIX) else role
     (remote,) = (ctx.cluster.only(role).remotes.keys())
     ceph_ref = ctx.summary.get('ceph-sha1', 'master')
 

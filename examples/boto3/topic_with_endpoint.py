@@ -15,7 +15,7 @@ elif len(sys.argv) == 2:
     topic_name = sys.argv[1]
     region_name = ""
 else:
-    print('Usage: ' + sys.argv[0] + ' <topic name> [region name]')
+    print(f'Usage: {sys.argv[0]} <topic name> [region name]')
     sys.exit(1)
 
 # endpoint and keys from vstart

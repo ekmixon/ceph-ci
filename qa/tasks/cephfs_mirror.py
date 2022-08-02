@@ -26,7 +26,7 @@ class CephFSMirror(Task):
             raise ConfigError('cephfs-mirror requires a client to connect')
 
         self.cluster_name, type_, self.client_id = misc.split_role(self.client)
-        if not type_ == 'client':
+        if type_ != 'client':
             raise ConfigError(f'client role {self.client} must be a client')
         self.remote = get_remote_for_role(self.ctx, self.client)
 

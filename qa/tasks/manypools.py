@@ -30,9 +30,9 @@ def task(ctx, config):
         clients: [client.0]
         time: 360
     """
-    
+
     log.info('creating {n} pools'.format(n=config))
-    
+
     poolnum = int(config)
     creator_remotes = []
     client_roles = teuthology.all_roles_of_type(ctx.cluster, 'client')
@@ -43,7 +43,7 @@ def task(ctx, config):
         creator_remotes.append((creator_remote, 'client.{id}'.format(id=role)))
 
     remaining_pools = poolnum
-    poolprocs=dict()
+    poolprocs = {}
     while (remaining_pools > 0):
         log.info('{n} pools remaining to create'.format(n=remaining_pools))
         for remote, role_ in creator_remotes:

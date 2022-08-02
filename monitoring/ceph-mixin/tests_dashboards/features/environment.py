@@ -26,7 +26,7 @@ class GlobalContext:
         table.field_names = ['Name', 'Queries', 'Tested', 'Cover']
 
         def percent(tested, total):
-            return str(round((tested / total) * 100, 2)) + '%'
+            return f'{str(round((tested / total) * 100, 2))}%'
 
         def file_name(path):
             return path.split('/')[-1]
@@ -111,7 +111,7 @@ def step_impl(context, panel_name, legend):
     """
     if legend == "EMPTY":
         legend = ''
-    query_id = panel_name + '-' + legend
+    query_id = f'{panel_name}-{legend}'
     if query_id not in global_context.query_map:
         raise KeyError((f'Query with legend {legend} in panel "{panel_name}"'
                            'couldn\'t be found'))

@@ -65,8 +65,7 @@ class CheckCounter(Task):
 
                 manager = self.ctx.managers[cluster_name]
                 proc = manager.admin_socket(daemon_type, daemon_id, ["perf", "dump"])
-                response_data = proc.stdout.getvalue().strip()
-                if response_data:
+                if response_data := proc.stdout.getvalue().strip():
                     perf_dump = json.loads(response_data)
                 else:
                     log.warning("No admin socket response from {0}, skipping".format(daemon_id))
@@ -88,8 +87,7 @@ class CheckCounter(Task):
                         seen.add(counter)
 
             if not dry_run:
-                unseen = set(counters) - set(seen)
-                if unseen:
+                if unseen := set(counters) - set(seen):
                     raise RuntimeError("The following counters failed to be set "
                                        "on {0} daemons: {1}".format(
                         daemon_type, unseen

@@ -106,27 +106,24 @@ class CephTestCase(unittest.TestCase):
 
         ceph_manager = self.ceph_cluster.mon_manager
 
+
+
         class ContextManager(object):
             def match(self):
                 found = expected_pattern in self.watcher_process.stdout.getvalue()
-                if invert_match:
-                    return not found
-
-                return found
+                return not found if invert_match else found
 
             def __enter__(self):
                 self.watcher_process = ceph_manager.run_ceph_w(watch_channel)
 
             def __exit__(self, exc_type, exc_val, exc_tb):
                 if not self.watcher_process.finished:
-                    # Check if we got an early match, wait a bit if we didn't
                     if self.match():
                         return
-                    else:
-                        log.debug("No log hits yet, waiting...")
-                        # Default monc tick interval is 10s, so wait that long and
-                        # then some grace
-                        time.sleep(5 + timeout)
+                    log.debug("No log hits yet, waiting...")
+                    # Default monc tick interval is 10s, so wait that long and
+                    # then some grace
+                    time.sleep(5 + timeout)
 
                 self.watcher_process.stdin.close()
                 try:
@@ -138,6 +135,7 @@ class CephTestCase(unittest.TestCase):
                     log.error("Log output: \n{0}\n".format(self.watcher_process.stdout.getvalue()))
                     raise AssertionError("Expected log message not found: '{0}'".format(expected_pattern))
 
+
         return ContextManager()
 
     def wait_for_health(self, pattern, timeout):
@@ -146,9 +144,9 @@ class CephTestCase(unittest.TestCase):
         """
         def seen_health_warning():
             health = self.ceph_cluster.mon_manager.get_mon_health()
-            codes = [s for s in health['checks']]
+            codes = list(health['checks'])
             summary_strings = [s[1]['summary']['message'] for s in health['checks'].items()]
-            if len(summary_strings) == 0:
+            if not summary_strings:
                 log.debug("Not expected number of summary strings ({0})".format(summary_strings))
                 return False
             else:

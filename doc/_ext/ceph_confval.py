@@ -95,12 +95,12 @@ def eval_size(value) -> int:
 
 def readable_duration(value: str, typ: str) -> str:
     try:
-        if typ == 'sec':
+        if typ == 'float':
+            return str(float(value))
+        elif typ == 'sec':
             v = int(value)
             postfix = 'second' if v == 1 else 'seconds'
             return f'{v} {postfix}'
-        elif typ == 'float':
-            return str(float(value))
         else:
             return str(int(value))
     except ValueError:
@@ -116,10 +116,7 @@ def readable_duration(value: str, typ: str) -> str:
 
 
 def do_plain_num(value: str, typ: str) -> str:
-    if typ == 'float':
-        return str(float(value))
-    else:
-        return str(int(value))
+    return str(float(value)) if typ == 'float' else str(int(value))
 
 
 def iec_size(value: int) -> str:
@@ -158,10 +155,7 @@ def readable_num(value: str, typ: str) -> str:
 
 
 def literal(name) -> str:
-    if name:
-        return f'``{name}``'
-    else:
-        return f'<empty string>'
+    return f'``{name}``' if name else '<empty string>'
 
 
 def ref_confval(name) -> str:
@@ -253,7 +247,7 @@ class CephOption(ObjectDescription):
             except OSError as e:
                 message = f'Unable to open option file "{fn}": {e}'
                 raise self.error(message)
-        CephOption.opts = dict((opt['name'], opt) for opt in opts)
+        CephOption.opts = {opt['name']: opt for opt in opts}
         return CephOption.opts
 
     def _normalize_path(self, dirname):
@@ -264,9 +258,11 @@ class CephOption(ObjectDescription):
     def _is_mgr_module(self, dirname, name):
         if not os.path.isdir(os.path.join(dirname, name)):
             return False
-        if not os.path.isfile(os.path.join(dirname, name, '__init__.py')):
-            return False
-        return name not in ['tests']
+        return (
+            name not in ['tests']
+            if os.path.isfile(os.path.join(dirname, name, '__init__.py'))
+            else False
+        )
 
     @contextlib.contextmanager
     def mocked_modules(self):
@@ -345,7 +341,7 @@ class CephOption(ObjectDescription):
             self.env.note_dependency(fn)
         os.environ['UNITTEST'] = 'true'
         opts = self._collect_options_from_module(module)
-        CephOption.mgr_opts[module] = dict((opt['name'], opt) for opt in opts)
+        CephOption.mgr_opts[module] = {opt['name']: opt for opt in opts}
         return CephOption.mgr_opts[module]
 
     def _current_module(self) -> str:
@@ -386,8 +382,7 @@ class CephOption(ObjectDescription):
         signode += addnodes.desc_name(sig, sig)
         # normalize whitespace like XRefRole does
         name = ws_re.sub(' ', sig)
-        cur_module = self._current_module()
-        if cur_module:
+        if cur_module := self._current_module():
             return '/'.join(['mgr', cur_module, name])
         else:
             return name

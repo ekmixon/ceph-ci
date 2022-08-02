@@ -16,9 +16,7 @@ def resolve_time_and_unit(time: str) -> Union[Tuple[int, str], Tuple[None, None]
     """
     if time[-1] in UNITS:
         return int(time[:-1]), time[-1]
-    if time[-2:] in UNITS:
-        return int(time[:-2]), time[-2:]
-    return None, None
+    return (int(time[:-2]), time[-2:]) if time[-2:] in UNITS else (None, None)
 
 
 def get_dashboards_data() -> Dict[str, Any]:
@@ -100,5 +98,4 @@ def replace_grafana_expr_variables(expr: str, variable: str, value: Any) -> str:
     'metric{name~="replacement"}'
     """
     regex = fr'\${variable}(?=\W)'
-    new_expr = re.sub(regex, fr'{value}', expr)
-    return new_expr
+    return re.sub(regex, fr'{value}', expr)

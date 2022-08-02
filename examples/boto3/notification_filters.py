@@ -4,7 +4,7 @@ import boto3
 import sys
 
 if len(sys.argv) != 4:
-    print('Usage: ' + sys.argv[0] + ' <bucket> <topic ARN> <notification Id>')
+    print(f'Usage: {sys.argv[0]} <bucket> <topic ARN> <notification Id>')
     sys.exit(1)
 
 # bucket name as first argument

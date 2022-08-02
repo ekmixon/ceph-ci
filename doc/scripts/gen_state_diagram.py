@@ -13,9 +13,7 @@ def acc_lines(generator):
     current = ""
     for i in generator:
         current += i
-        if i == ';' or \
-            i == '{' or \
-            i == '}':
+        if i in [';', '{', '}']:
             yield current.lstrip("\n")
             current = ""
 
@@ -117,7 +115,7 @@ class StateMachineRenderer(object):
             joined_line = ' '.join([previous_line, line])
             match = re.search(r"(\w+::)*::(?P<tag>\w+)::\w+\(\s*const (?P<event>\w+)", joined_line)
         if match is not None:
-            self.context.append((match.group('tag'), self.context_depth, match.group('event')))
+            self.context.append((match['tag'], self.context_depth, match['event']))
         if '{' in line:
             self.context_depth += 1
         if '}' in line:
@@ -131,23 +129,23 @@ class StateMachineRenderer(object):
                 r"boost::statechart::state_machine<\s*(\w*),\s*(\w*)\s*>",
                 line)
             if tokens is None:
-                raise Exception("Error: malformed state_machine line: " + line)
-            self.machines[tokens.group(1)] = tokens.group(2)
-            self.context.append((tokens.group(1), self.context_depth, ""))
+                raise Exception(f"Error: malformed state_machine line: {line}")
+            self.machines[tokens[1]] = tokens[2]
+            self.context.append((tokens[1], self.context_depth, ""))
             return
         if "boost::statechart::state" in line:
             tokens = re.search(
                 r"boost::statechart::state<\s*(\w*),\s*(\w*)\s*,?\s*(\w*)\s*>",
                 line)
             if tokens is None:
-                raise Exception("Error: malformed state line: " + line)
-            self.states[tokens.group(1)] = tokens.group(2)
-            if tokens.group(2) not in self.state_contents.keys():
-                self.state_contents[tokens.group(2)] = []
-            self.state_contents[tokens.group(2)].append(tokens.group(1))
-            if tokens.group(3):
-                self.machines[tokens.group(1)] = tokens.group(3)
-            self.context.append((tokens.group(1), self.context_depth, ""))
+                raise Exception(f"Error: malformed state line: {line}")
+            self.states[tokens[1]] = tokens[2]
+            if tokens[2] not in self.state_contents.keys():
+                self.state_contents[tokens[2]] = []
+            self.state_contents[tokens[2]].append(tokens[1])
+            if tokens[3]:
+                self.machines[tokens[1]] = tokens[3]
+            self.context.append((tokens[1], self.context_depth, ""))
             return
 
     def get_event(self, line):
@@ -157,23 +155,25 @@ class StateMachineRenderer(object):
                 if i.group(1) not in self.edges.keys():
                     self.edges[i.group(1)] = []
                 if not self.context:
-                    raise Exception("no context at line: " + line)
+                    raise Exception(f"no context at line: {line}")
                 self.edges[i.group(1)].append((self.context[-1][0], i.group(2)))
         i = re.search("return\s+transit<\s*(\w*)\s*>()", line)
         if i is not None:
             if not self.context:
-                raise Exception("no context at line: " + line)
+                raise Exception(f"no context at line: {line}")
             if not self.context[-1][2]:
-                raise Exception("no event in context at line: " + line)
+                raise Exception(f"no event in context at line: {line}")
             if self.context[-1][2] not in self.edges.keys():
                 self.edges[self.context[-1][2]] = []
-            self.edges[self.context[-1][2]].append((self.context[-1][0], i.group(1)))
+            self.edges[self.context[-1][2]].append((self.context[-1][0], i[1]))
 
     def emit_dot(self, output):
-        top_level = []
-        for state in self.machines.keys():
-            if state not in self.states.keys():
-                top_level.append(state)
+        top_level = [
+            state
+            for state in self.machines.keys()
+            if state not in self.states.keys()
+        ]
+
         print('Top Level States: ', top_level, file=sys.stderr)
         print('digraph G {', file=output)
         print('\tsize="7,7"', file=output)
@@ -187,7 +187,7 @@ class StateMachineRenderer(object):
 
     def emit_state(self, state):
         if state in self.state_contents.keys():
-            self.clusterlabel[state] = "cluster%s" % (str(self.subgraphnum),)
+            self.clusterlabel[state] = f"cluster{str(self.subgraphnum)}"
             yield "subgraph cluster%s {" % (str(self.subgraphnum),)
             self.subgraphnum += 1
             yield """\tlabel = "%s";""" % (state,)
@@ -205,17 +205,17 @@ class StateMachineRenderer(object):
             found = False
             for (k, v) in self.machines.items():
                 if v == state:
-                    yield state+"[shape=Mdiamond style=filled fillcolor=lightgrey];"
+                    yield f"{state}[shape=Mdiamond style=filled fillcolor=lightgrey];"
                     found = True
                     break
             if not found:
-                yield state+";"
+                yield f"{state};"
 
     def emit_event(self, event):
         def append(app):
             retval = "["
             for i in app:
-                retval += (i + ",")
+                retval += f"{i},"
             retval += "]"
             return retval
 
@@ -225,18 +225,18 @@ class StateMachineRenderer(object):
                         'color="%s"' % (color,),
                         'fontcolor="%s"' % (color,)]
             if fro in self.machines.keys():
-                appendix.append("ltail=%s" % (self.clusterlabel[fro],))
+                appendix.append(f"ltail={self.clusterlabel[fro]}")
                 while fro in self.machines.keys():
                     fro = self.machines[fro]
             if to in self.machines.keys():
-                appendix.append("lhead=%s" % (self.clusterlabel[to],))
+                appendix.append(f"lhead={self.clusterlabel[to]}")
                 while to in self.machines.keys():
                     to = self.machines[to]
-            yield("%s -> %s %s;" % (fro, to, append(appendix)))
+            yield f"{fro} -> {to} {append(appendix)};"
 
 
 if __name__ == '__main__':
-    INPUT_GENERATOR = do_filter(line for line in sys.stdin)
+    INPUT_GENERATOR = do_filter(iter(sys.stdin))
     RENDERER = StateMachineRenderer()
     RENDERER.read_input(INPUT_GENERATOR)
     RENDERER.emit_dot(output=sys.stdout)

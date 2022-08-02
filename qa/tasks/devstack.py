@@ -78,9 +78,9 @@ def install_devstack(devstack_node, branch="master"):
 
     if branch != "master":
         if branch in DS_STABLE_BRANCHES and not branch.startswith("stable"):
-            branch = "stable/" + branch
+            branch = f"stable/{branch}"
         log.info("Checking out {branch} branch...".format(branch=branch))
-        cmd = "cd devstack && git checkout " + branch
+        cmd = f"cd devstack && git checkout {branch}"
         devstack_node.run(args=cmd)
 
     log.info("Installing DevStack...")
@@ -317,7 +317,7 @@ def create_devstack_archive(ctx, devstack_node):
     test_dir = misc.get_testdir(ctx)
     devstack_archive_dir = "{test_dir}/archive/devstack".format(
         test_dir=test_dir)
-    devstack_node.run(args="mkdir -p " + devstack_archive_dir)
+    devstack_node.run(args=f"mkdir -p {devstack_archive_dir}")
     return devstack_archive_dir
 
 
@@ -363,7 +363,7 @@ def create_volume(devstack_node, ceph_node, vol_name, size):
 
 
 def parse_os_table(table_str):
-    out_dict = dict()
+    out_dict = {}
     for line in table_str.split('\n'):
         if line.startswith('|'):
             items = line.split()

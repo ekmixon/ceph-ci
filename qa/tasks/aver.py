@@ -37,11 +37,11 @@ def task(ctx, config):
     url = ('https://github.com/ivotron/aver/releases/download/'
            'v0.3.0/aver-linux-amd64.tar.bz2')
 
-    aver_path = ctx.archive + '/aver'
+    aver_path = f'{ctx.archive}/aver'
 
     # download binary
-    check_call(['wget', '-O', aver_path + '.tbz', url])
-    check_call(['tar', 'xfj', aver_path + '.tbz', '-C', ctx.archive])
+    check_call(['wget', '-O', f'{aver_path}.tbz', url])
+    check_call(['tar', 'xfj', f'{aver_path}.tbz', '-C', ctx.archive])
 
     # print version
     process = Popen([aver_path, '-v'], stdout=PIPE)
@@ -49,19 +49,26 @@ def task(ctx, config):
 
     # validate
     for validation in config['validations']:
-        cmd = (aver_path + ' -s -i ' + (ctx.archive + '/' + config['input']) +
-               ' "' + validation + '"')
-        log.info("executing: " + cmd)
+        cmd = (
+            (
+                f'{aver_path} -s -i '
+                + (f'{ctx.archive}/' + config['input'])
+                + ' "'
+            )
+            + validation
+        ) + '"'
+
+        log.info(f"executing: {cmd}")
         process = Popen(cmd, stdout=PIPE, stderr=PIPE, shell=True)
         (stdout, stderr) = process.communicate()
         if stderr:
-            log.info('aver stderr: ' + stderr)
-        log.info('aver result: ' + stdout)
+            log.info(f'aver stderr: {stderr}')
+        log.info(f'aver result: {stdout}')
         if stdout.strip(' \t\n\r') != 'true':
-            raise Exception('Failed validation: ' + validation)
+            raise Exception(f'Failed validation: {validation}')
 
     try:
         yield
     finally:
         log.info('Removing aver binary...')
-        check_call(['rm', aver_path, aver_path + '.tbz'])
+        check_call(['rm', aver_path, f'{aver_path}.tbz'])
